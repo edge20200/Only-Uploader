@@ -178,6 +178,8 @@ config = {
             # "anon" : False
         },
         "RTF": {
+	    "username" : "username",
+            "password" : "password",
             "api_key": 'get_it_by_running_/api/ login command from https://retroflix.club/api/doc',
             "announce_url": "get from upload page",
             # "tag": "RetroFlix, nd",
@@ -186,6 +188,11 @@ config = {
         "RF" : {
             "api_key" : "RF api key",
             "announce_url" : "https://reelflix.xyz/announce/customannounceurl",
+            # "anon" : False
+        },
+        "OTW" : {
+            "api_key" : "OTW api key",
+            "announce_url" : "https://oldtoons.world/announce/customannounceurl",
             # "anon" : False
         },
         "MANUAL" : {

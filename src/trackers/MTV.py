@@ -29,11 +29,9 @@ class MTV():
         self.forum_link = 'https://www.morethantv.me/wiki.php?action=article&id=73'
         self.search_url = 'https://www.morethantv.me/api/torznab'
         self.banned_groups = [
-            '3LTON', 'mRS', 'CM8', 'BRrip', 'Leffe', 'aXXo', 'FRDS', 'XS', 'KiNGDOM', 'WAF', 'nHD', 
-            'h65', 'CrEwSaDe', 'TM', 'ViSiON', 'x0r', 'PandaRG', 'HD2DVD', 'iPlanet', 'JIVE', 'ELiTE',
-            'nikt0', 'STUTTERSHIT', 'ION10', 'RARBG', 'FaNGDiNG0', 'YIFY', 'FUM', 'ViSION', 'NhaNc3', 
-            'nSD', 'PRODJi', 'DNL', 'DeadFish', 'HDTime', 'mHD', 'TERMiNAL', 
-            '[Oj]', 'QxR', 'ZmN', 'RDN', 'mSD', 'LOAD', 'BDP', 'SANTi', 'ZKBL', ['EVO', 'WEB-DL Only']
+            'aXXo', 'BRrip', 'CM8', 'CrEwSaDe', 'DNL', 'FaNGDiNG0', 'FRDS', 'HD2DVD', 'HDTime', 'iPlanet',
+            'KiNGDOM', 'Leffe', 'mHD', 'mSD', 'nHD', 'nikt0', 'nSD', 'NhaNc3', 'PRODJi', 'RDN', 'SANTi',
+            'STUTTERSHIT', 'TERMiNAL', 'ViSION', 'WAF', 'x0r', 'YIFY', ['EVO', 'WEB-DL Only']
         ]
         pass
 
@@ -340,7 +338,7 @@ class MTV():
     async def get_tags(self, meta):
         tags = []
         # Genres
-        tags.extend([x.strip().lower() for x in meta['genres'].split()])
+        tags.extend([x.strip(', ').lower().replace(' ', '.') for x in meta['genres'].split(',')])
         # Resolution
         tags.append(meta['resolution'].lower())
         if meta['sd'] == 1:
