@@ -178,7 +178,7 @@ config = {
             # "anon" : False
         },
         "RTF": {
-	    "username" : "username",
+	        "username" : "username",
             "password" : "password",
             "api_key": 'get_it_by_running_/api/ login command from https://retroflix.club/api/doc',
             "announce_url": "get from upload page",
@@ -194,6 +194,10 @@ config = {
             "api_key" : "OTW api key",
             "announce_url" : "https://oldtoons.world/announce/customannounceurl",
             # "anon" : False
+        "FNP" : {
+            "api_key" : "FNP api key",
+            "announce_url" : "https://fearnopeer.com/announce/customannounceurl",
+            # "anon" : "False"
         },
         "MANUAL" : {
             # Uncomment and replace link with filebrowser (https://github.com/filebrowser/filebrowser) link to the Upload-Assistant directory, this will link to your filebrowser instead of uploading to uguu.se
@@ -306,3 +310,4 @@ config = {
     }
 }
 
+}
