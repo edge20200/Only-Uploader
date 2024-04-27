@@ -8,6 +8,7 @@ config = {
 
         "tmdb_api" : "tmdb_api key",
         "imgbb_api" : "imgbb api key",
+        "oeimg_api" : "oeimg api key",
         "ptpimg_api" : "ptpimg api key",
         "lensdump_api" : "lensdump api key",
 
@@ -15,8 +16,9 @@ config = {
         "img_host_1": "imgbb",
         "img_host_2": "ptpimg",
         "img_host_3": "imgbox",
-	    "img_host_4": "pixhost",
+	"img_host_4": "pixhost",
         "img_host_5": "lensdump",
+	"img_host_6": "oeimg",    
 
 
         "screens" : "6",
@@ -88,17 +90,17 @@ config = {
             # 'otp_uri' : 'OTP URI, read the following for more information https://github.com/google/google-authenticator/wiki/Key-Uri-Format'
         },
         "STC" :{
-            "api_key" : "STC",
+            "api_key" : "STC API Key",
             "announce_url" : "https://skipthecommericals.xyz/announce/customannounceurl",
             # "anon" : False
         },
         "STT" :{
-            "api_key" : "STC",
+            "api_key" : "STC API Key",
             "announce_url" : "https://stt.xyz/announce/customannounceurl",
             # "anon" : False
         },
         "SN": {
-            "api_key": "6Z1tMrXzcYpIeSdGZueQWqb3BowlS6YuIoZLHe3dvIqkSfY0Ws5SHx78oGSTazG0jQ1agduSqe07FPPE8sdWTg",
+            "api_key": "SN API Key",
             "announce_url": "https://tracker.swarmazon.club:8443/<YOUR_PASSKEY>/announce",
         },
         "HP" :{
@@ -175,6 +177,8 @@ config = {
         "OE" : {
             "api_key" : "OE api key",
             "announce_url" : "https://onlyencodes.cc/announce/customannounceurl",
+		#"internal" : True,
+		#"internal_groups" " ["group1"],
             # "anon" : False
         },
         "RTF": {
@@ -186,6 +190,11 @@ config = {
         "RF" : {
             "api_key" : "RF api key",
             "announce_url" : "https://reelflix.xyz/announce/customannounceurl",
+            # "anon" : False
+        },
+        "OTW" : {
+            "api_key" : "OTW api key",
+            "announce_url" : "https://oldtoons.world/announce/customannounceurl",
             # "anon" : False
         },
         "MANUAL" : {
