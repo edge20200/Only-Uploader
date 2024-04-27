@@ -1,4 +1,6 @@
-# L4G's Upload Assistant
+# Upload Assistant
+
+Forked from L4G Upload Assistant, thanks for all the work L4G on this tool.
 
 A simple tool to take the work out of uploading.
 
@@ -13,17 +15,13 @@ A simple tool to take the work out of uploading.
   - Can re-use existing torrents instead of hashing new
   - Generates proper name for your upload using Mediainfo/BDInfo and TMDb/IMDb conforming to site rules
   - Checks for existing releases already on site
-  - Uploads to PTP/BLU/BHD/Aither/THR/STC/R4E(limited)/STT/HP/ACM/LCD/LST/NBL/ANT/FL/HUNO/RF/SN
+  - Uploads to PTP/BLU/BHD/Aither/THR/STC/R4E(limited)/STT/HP/ACM/LCD/LST/NBL/ANT/FL/HUNO/RF/SN/OE/OTW
   - Adds to your client with fast resume, seeding instantly (rtorrent/qbittorrent/deluge/watch folder)
   - ALL WITH MINIMAL INPUT!
   - Currently works with .mkv/.mp4/Blu-ray/DVD/HD-DVDs
 
-
-
 ## Coming Soon:
   - Features
-
-
   
 
 ## **Setup:**
@@ -32,16 +30,16 @@ A simple tool to take the work out of uploading.
    - Also needs MediaInfo and ffmpeg installed on your system
       - On Windows systems, ffmpeg must be added to PATH (https://windowsloop.com/install-ffmpeg-windows-10/)
       - On linux systems, get it from your favorite package manager
-   - Clone the repo to your system `git clone https://github.com/L4GSP1KE/Upload-Assistant.git`
+   - Clone the repo to your system `git clone https://github.com/edge20200/UploadAssistant.git`
    - Copy and Rename `data/example-config.py` to `data/config.py`
-   - Edit `config.py` to use your information (more detailed information in the [wiki](https://github.com/L4GSP1KE/Upload-Assistant/wiki))
+   - Edit `config.py` to use your information (more detailed information in the [wiki](https://github.com/edge20200/UploadAssistant/wiki))
       - tmdb_api (v3) key can be obtained from https://developers.themoviedb.org/3/getting-started/introduction
       - image host api keys can be obtained from their respective sites
    - Install necessary python modules `pip3 install --user -U -r requirements.txt`
      
    
 
-   **Additional Resources are found in the [wiki](https://github.com/L4GSP1KE/Upload-Assistant/wiki)**
+   **Additional Resources are found in the [wiki](https://github.com/edge20200/UploadAssistant/wiki)**
    
    Feel free to contact me if you need help, I'm not that hard to find.
 
@@ -55,4 +53,4 @@ A simple tool to take the work out of uploading.
   
   Args are OPTIONAL, for a list of acceptable args, pass `--help`
 ## **Docker Usage:**
-  Visit our wonderful [docker usage wiki page](https://github.com/L4GSP1KE/Upload-Assistant/wiki/Docker)
+  Visit our wonderful [docker usage wiki page](https://github.com/edge20200/UploadAssistant/wiki/Docker)
