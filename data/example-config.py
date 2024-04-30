@@ -36,7 +36,7 @@ config = {
 
     "TRACKERS" : {
         # Which trackers do you want to upload to?
-        "default_trackers" : "BLU, BHD, AITHER, STC, STT, SN, THR, R4E, HP, ACM, PTP, LCD, LST, PTER, NBL, ANT, MTV",
+        "default_trackers" : "BLU, BHD, AITHER, STC, STT, SN, THR, R4E, HP, ACM, PTP, LCD, LST, PTER, NBL, ANT, MTV, OE, OTW",
 
         "BLU" : {
             "useAPI" : False, # Set to True if using BLU
@@ -161,11 +161,6 @@ config = {
         },
         "TL": {
             "announce_key": "TL announce key",
-        },
-        "TDC" :{
-            "api_key" : "TDC api key",
-            "announce_url" : "https://thedarkcommunity.cc/announce/customannounceurl",
-            # "anon" : "False"
         },
         "HDT" : {
             "username" : "username",
