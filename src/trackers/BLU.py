@@ -24,7 +24,7 @@ class BLU():
         self.search_url = 'https://blutopia.cc/api/torrents/filter'
         self.torrent_url = 'https://blutopia.cc/api/torrents/'
         self.upload_url = 'https://blutopia.cc/api/torrents/upload' 
-        self.signature = f"\n[center][url=https://blutopia.cc/forums/topics/3087]Created by L4G's Upload Assistant[/url][/center]"
+        self.signature = f"\n[center][url=https://blutopia.cc/]Created by Upload Assistant[/url][/center]"
         self.banned_groups = [
             '[Oj]', '3LTON', '4yEo', 'AFG', 'AniHLS', 'AnimeRG', 'AniURL', 'AROMA', 'aXXo', 'Brrip', 'CM8', 'CrEwSaDe', 'd3g', 'DeadFish', 'DNL', 'ELiTE', 'eSc', 'FaNGDiNG0', 'FGT', 'Flights', 
             'FRDS', 'FUM', 'HAiKU', 'HD2DVD', 'HDS', 'HDTime', 'Hi10', 'ION10', 'iPlanet', 'JIVE', 'KiNGDOM', 'Leffe', 'LEGi0N', 'LOAD', 'MeGusta', 'mHD', 'mSD', 'NhaNc3', 'nHD', 'nikt0', 'NOIVTC', 
