@@ -25,7 +25,7 @@ class STT():
         self.source_flag = 'STT'
         self.search_url = 'https://skipthetrailers.xyz/api/torrents/filter'
         self.upload_url = 'https://skipthetrailers.xyz/api/torrents/upload'
-        self.signature = '\n[center][url=https://skipthetrailers.xyz/pages/1]Please Seed[/url][/center]'
+        self.signature = '\n[center][url=https://skipthetrailers.xyz/]Simplicity for the Simpleton  -- SEED UNTIL YOU BLEED -- Powered by Upload Assistant[/url][/center]'
         self.banned_groups = ['Will1869', 'x0r', 'EVO', 'RARBG', 'ZMNT', 'd3g', 'MeGusta', 'FGT', 'nikt0', 'STUTTERSHIT', '$andra', 'AROMA', 'YIFY', 'YTS', 'FROZEN', 'LAMA', 'GalaxyRG']
         pass
     
