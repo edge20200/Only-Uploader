@@ -36,7 +36,7 @@ config = {
 
     "TRACKERS" : {
         # Which trackers do you want to upload to?
-        "default_trackers" : "BLU, BHD, AITHER, STC, STT, SN, THR, R4E, HP, ACM, PTP, LCD, LST, PTER, NBL, ANT, MTV, OE, OTW",
+        "default_trackers" : "BLU, BHD, AITHER, STC, STT, SN, THR, R4E, HP, ACM, PTP, LCD, LST, PTER, NBL, ANT, MTV, CBR, RTF, HUNO, BHDTV, LT, PTER, TL, TDC, HDT, OE, RF, OTW, FNP, UTP",
 
         "BLU" : {
             "useAPI" : False, # Set to True if using BLU
@@ -141,6 +141,11 @@ config = {
             "announce_url" : "https://locadora.cc/announce/customannounceurl",
             # "anon" : False
         },
+	"CBR" : {
+            "api_key" : "CBR api key",
+            "announce_url" : "https://capybarabr.com/announce/customannounceurl",
+            # "anon" : False
+        },   
         "LST" : {
             "api_key" : "LST api key",
             "announce_url" : "https://lst.gg/announce/customannounceurl",
@@ -177,6 +182,8 @@ config = {
             # "anon" : False
         },
         "RTF": {
+	    "username" : "username",
+            "password" : "password",
             "api_key": 'get_it_by_running_/api/ login command from https://retroflix.club/api/doc',
             "announce_url": "get from upload page",
             # "tag": "RetroFlix, nd",
@@ -190,6 +197,16 @@ config = {
         "OTW" : {
             "api_key" : "OTW api key",
             "announce_url" : "https://oldtoons.world/announce/customannounceurl",
+            # "anon" : False
+        },
+        "FNP" :{
+            "api_key" : "FNP api key",
+            "announce_url" : "https://fearnopeer.com/announce/customannounceurl",
+            # "anon" : "False"
+        },
+        "UTP" : {
+            "api_key" : "UTP api key",
+            "announce_url" : "https://UTP/announce/customannounceurl",
             # "anon" : False
         },
         "MANUAL" : {
