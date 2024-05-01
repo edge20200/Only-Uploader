@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import requests
 from src.args import Args
 from src.clients import Clients
@@ -71,8 +73,8 @@ except:
                 with open(f"{base_dir}/data/config.py", 'w') as f:
                     f.write(f"config = {json.dumps(json_config, indent=4)}")
                     f.close()
-                cli_ui.info(cli_ui.green, "Successfully updated config from .json to .py")    
-                cli_ui.info(cli_ui.green, "It is now safe for you to delete", cli_ui.yellow, "data/config.json", "if you wish")    
+                cli_ui.info(cli_ui.green, "Successfully updated config from .json to .py")
+                cli_ui.info(cli_ui.green, "It is now safe for you to delete", cli_ui.yellow, "data/config.json", "if you wish")
                 from data.config import config
             else:
                 raise NotImplementedError
@@ -124,7 +126,7 @@ async def do_the_thing(base_dir):
                 console.print("\n\n")
             else:
                 console.print(f"[red]Path: [bold red]{path}[/bold red] does not exist")
-                
+
         elif os.path.exists(os.path.dirname(path)) and len(paths) != 1:
             queue = paths
             md_text = "\n - ".join(queue)
@@ -151,7 +153,7 @@ async def do_the_thing(base_dir):
                 console.print("\n[bold green]Queuing these files:[/bold green]", end='')
                 console.print(Markdown(f"- {md_text.rstrip()}\n\n", style=Style(color='cyan')))
                 console.print("\n\n")
-            
+
         else:
             # Add Search Here
             console.print(f"[red]There was an issue with your input. If you think this was not an issue, please make a report that includes the full command used.")
@@ -168,8 +170,8 @@ async def do_the_thing(base_dir):
                 saved_meta = json.load(f)
                 for key, value in saved_meta.items():
                     overwrite_list = [
-                        'trackers', 'dupe', 'debug', 'anon', 'category', 'type', 'screens', 'nohash', 'manual_edition', 'imdb', 'tmdb_manual', 'mal', 'manual', 
-                        'hdb', 'ptp', 'blu', 'no_season', 'no_aka', 'no_year', 'no_dub', 'no_tag', 'no_seed', 'client', 'desclink', 'descfile', 'desc', 'draft', 'region', 'freeleech', 
+                        'trackers', 'dupe', 'debug', 'anon', 'category', 'type', 'screens', 'nohash', 'manual_edition', 'imdb', 'tmdb_manual', 'mal', 'manual',
+                        'hdb', 'ptp', 'blu', 'no_season', 'no_aka', 'no_year', 'no_dub', 'no_tag', 'no_seed', 'client', 'desclink', 'descfile', 'desc', 'draft', 'region', 'freeleech',
                         'personalrelease', 'unattended', 'season', 'episode', 'torrent_creation', 'qbit_tag', 'qbit_cat', 'skip_imghost_upload', 'imghost', 'manual_source', 'webdv', 'hardcoded-subs'
                     ]
                     if meta.get(key, None) != value and key in overwrite_list:
@@ -187,7 +189,7 @@ async def do_the_thing(base_dir):
                 meta['unattended'] = True
                 console.print("[yellow]Running in Auto Mode")
         prep = Prep(screens=meta['screens'], img_host=meta['imghost'], config=config)
-        meta = await prep.gather_prep(meta=meta, mode='cli') 
+        meta = await prep.gather_prep(meta=meta, mode='cli')
         meta['name_notag'], meta['name'], meta['clean_name'], meta['potential_missing'] = await prep.get_name(meta)
 
         if meta.get('image_list', False) in (False, []) and meta.get('skip_imghost_upload', False) == False:
@@ -213,7 +215,7 @@ async def do_the_thing(base_dir):
             prep.create_torrent(meta, Path(meta['path']), "BASE", meta.get('piece_size_max', 0))
         if int(meta.get('randomized', 0)) >= 1:
             prep.create_random_torrents(meta['base_dir'], meta['uuid'], meta['randomized'], meta['path'])
-            
+
         if meta.get('trackers', None) != None:
             trackers = meta['trackers']
         else:
@@ -223,7 +225,7 @@ async def do_the_thing(base_dir):
         with open (f"{meta['base_dir']}/tmp/{meta['uuid']}/meta.json", 'w') as f:
             json.dump(meta, f, indent=4)
             f.close()
-        confirm = get_confirmation(meta)  
+        confirm = get_confirmation(meta)
         while confirm == False:
             # help.print_help()
             editargs = cli_ui.ask_string("Input args that need correction e.g.(--tag NTb --category tv --tmdb 12345)")
@@ -233,16 +235,16 @@ async def do_the_thing(base_dir):
             meta, help, before_args = parser.parse(editargs, meta)
             # meta = await prep.tmdb_other_meta(meta)
             meta['edit'] = True
-            meta = await prep.gather_prep(meta=meta, mode='cli') 
+            meta = await prep.gather_prep(meta=meta, mode='cli')
             meta['name_notag'], meta['name'], meta['clean_name'], meta['potential_missing'] = await prep.get_name(meta)
             confirm = get_confirmation(meta)
-        
+
         if isinstance(trackers, list) == False:
             trackers = [trackers]
         trackers = [s.strip().upper() for s in trackers]
         if meta.get('manual', False):
             trackers.insert(0, "MANUAL")
-        
+
 
 
         ####################################
@@ -252,7 +254,7 @@ async def do_the_thing(base_dir):
         api_trackers = ['BLU', 'AITHER', 'STC', 'R4E', 'STT', 'RF', 'ACM','LCD','LST','HUNO', 'SN', 'LT', 'NBL', 'ANT', 'JPTV', 'OE', 'BHDTV', 'RTF', 'OTW', 'FNP', 'CBR', 'UTP']
         http_trackers = ['HDB', 'TTG', 'FL', 'PTER', 'HDT', 'MTV']
         tracker_class_map = {
-            'BLU' : BLU, 'BHD': BHD, 'AITHER' : AITHER, 'STC' : STC, 'R4E' : R4E, 'THR' : THR, 'STT' : STT, 'HP' : HP, 'PTP' : PTP, 'RF' : RF, 'SN' : SN, 
+            'BLU' : BLU, 'BHD': BHD, 'AITHER' : AITHER, 'STC' : STC, 'R4E' : R4E, 'THR' : THR, 'STT' : STT, 'HP' : HP, 'PTP' : PTP, 'RF' : RF, 'SN' : SN,
             'ACM' : ACM, 'HDB' : HDB, 'LCD': LCD, 'TTG' : TTG, 'LST' : LST, 'HUNO': HUNO, 'FL' : FL, 'LT' : LT, 'NBL' : NBL, 'ANT' : ANT, 'PTER': PTER, 'JPTV' : JPTV,
             'TL' : TL, 'HDT' : HDT, 'MTV': MTV, 'OE': OE, 'BHDTV': BHDTV, 'RTF': RTF, 'OTW': OTW, 'FNP': FNP, 'CBR': CBR, 'UTP': UTP}
 
@@ -264,7 +266,7 @@ async def do_the_thing(base_dir):
                 debug = "(DEBUG)"
             else:
                 debug = ""
-            
+
             if tracker in api_trackers:
                 tracker_class = tracker_class_map[tracker](config=config)
                 if meta['unattended']:
@@ -286,7 +288,7 @@ async def do_the_thing(base_dir):
                         if tracker == 'SN':
                             await asyncio.sleep(16)
                         await client.add_to_client(meta, tracker_class.tracker)
-            
+
             if tracker in http_trackers:
                 tracker_class = tracker_class_map[tracker](config=config)
                 if meta['unattended']:
@@ -306,7 +308,7 @@ async def do_the_thing(base_dir):
                             await client.add_to_client(meta, tracker_class.tracker)
 
             if tracker == "MANUAL":
-                if meta['unattended']:                
+                if meta['unattended']:
                     do_manual = True
                 else:
                     do_manual = cli_ui.ask_yes_no(f"Get files for manual upload?", default=True)
@@ -324,7 +326,7 @@ async def do_the_thing(base_dir):
                         console.print(f"[yellow]Unable to upload prep files, they can be found at `tmp/{meta['uuid']}")
                     else:
                         console.print(f"[green]{meta['name']}")
-                        console.print(f"[green]Files can be found at: [yellow]{url}[/yellow]")  
+                        console.print(f"[green]Files can be found at: [yellow]{url}[/yellow]")
 
             if tracker == "BHD":
                 bhd = BHD(config=config)
@@ -347,7 +349,7 @@ async def do_the_thing(base_dir):
                     if meta['upload'] == True:
                         await bhd.upload(meta)
                         await client.add_to_client(meta, "BHD")
-            
+
             if tracker == "THR":
                 if meta['unattended']:
                     upload_to_thr = True
@@ -425,7 +427,7 @@ async def do_the_thing(base_dir):
                     if check_banned_group(tracker_class.tracker, tracker_class.banned_groups, meta):
                         continue
                     await tracker_class.upload(meta)
-                    await client.add_to_client(meta, tracker_class.tracker)            
+                    await client.add_to_client(meta, tracker_class.tracker)
 
 
 def get_confirmation(meta):
@@ -466,7 +468,7 @@ def get_confirmation(meta):
     if meta.get('unattended', False) == False:
         get_missing(meta)
         ring_the_bell = "\a" if config['DEFAULT'].get("sfx_on_prompt", True) == True else "" # \a rings the bell
-        cli_ui.info_section(cli_ui.yellow, f"Is this correct?{ring_the_bell}") 
+        cli_ui.info_section(cli_ui.yellow, f"Is this correct?{ring_the_bell}")
         cli_ui.info(f"Name: {meta['name']}")
         confirm = cli_ui.ask_yes_no("Correct?", default=False)
     else:
@@ -477,10 +479,10 @@ def get_confirmation(meta):
 def dupe_check(dupes, meta):
     if not dupes:
             console.print("[green]No dupes found")
-            meta['upload'] = True   
+            meta['upload'] = True
             return meta
     else:
-        console.print()    
+        console.print()
         dupe_text = "\n".join(dupes)
         console.print()
         cli_ui.info_section(cli_ui.bold, "Are these dupes?")
@@ -547,7 +549,7 @@ def get_missing(meta):
         for each in meta['potential_missing']:
             if str(meta.get(each, '')).replace(' ', '') in ["", "None", "0"]:
                 if each == "imdb_id":
-                    each = 'imdb' 
+                    each = 'imdb'
                 missing.append(f"--{each} | {info_notes.get(each)}")
     if missing != []:
         cli_ui.info_section(cli_ui.yellow, "Potentially missing information:")
@@ -572,4 +574,4 @@ if __name__ == '__main__':
             loop.run_until_complete(do_the_thing(base_dir))
         else:
             asyncio.run(do_the_thing(base_dir))
-        
+
