@@ -351,6 +351,7 @@ class Prep():
             meta['service'], meta['service_longname'] = self.get_service(video, meta.get('tag', ''), meta['audio'], meta['filename'])
         meta['uhd'] = self.get_uhd(meta['type'], guessit(meta['path']), meta['resolution'], meta['path'])
         meta['hdr'] = self.get_hdr(mi, bdinfo)
+        meta['ds4k'] = self.get_ds4k(meta['path'])
         meta['distributor'] = self.get_distributor(meta['distributor'])
         if meta.get('is_disc', None) == "BDMV": #Blu-ray Specific
             meta['region'] = self.get_region(bdinfo, meta.get('region', None))
@@ -1735,6 +1736,14 @@ class Prep():
         hdr = f"{dv} {hdr}".strip()
         return hdr
 
+    def get_ds4k(self, filename):
+        if "DS4K" in filename:
+            ds4k = "DS4K"
+        else:
+            ds4k = ""
+
+        return ds4k
+
     def get_region(self, bdinfo, region=None):
         label = bdinfo.get('label', bdinfo.get('title', bdinfo.get('path', ''))).replace('.', ' ')
         if region != None:
@@ -2255,6 +2264,7 @@ class Prep():
         source = meta.get('source', "")
         uhd = meta.get('uhd', "")
         hdr = meta.get('hdr', "")
+        ds4k = meta.get('ds4k', "")
         episode_title = meta.get('episode_title', '')
         if meta.get('is_disc', "") == "BDMV": #Disk
             video_codec = meta.get('video_codec', "")
@@ -2306,13 +2316,13 @@ class Prep():
                 name = f"{title} {alt_title} {year} {edition} {repack} {source} REMUX  {audio}"
                 potential_missing = ['edition', 'description']
             elif type == "ENCODE": #Encode
-                name = f"{title} {alt_title} {year} {edition} {repack} {resolution} {uhd} {source} {audio} {hdr} {video_encode}"
+                name = f"{title} {alt_title} {year} {edition} {repack} {resolution} {ds4k} {uhd} {source} {audio} {hdr} {video_encode}"
                 potential_missing = ['edition', 'description']
             elif type == "WEBDL": #WEB-DL
                 name = f"{title} {alt_title} {year} {edition} {repack} {resolution} {uhd} {service} WEB-DL {audio} {hdr} {video_encode}"
                 potential_missing = ['edition', 'service']
             elif type == "WEBRIP": #WEBRip
-                name = f"{title} {alt_title} {year} {edition} {repack} {resolution} {uhd} {service} WEBRip {audio} {hdr} {video_encode}"
+                name = f"{title} {alt_title} {year} {edition} {repack} {resolution} {ds4k} {uhd} {service} WEBRip {audio} {hdr} {video_encode}"
                 potential_missing = ['edition', 'service']
             elif type == "HDTV": #HDTV
                 name = f"{title} {alt_title} {year} {edition} {repack} {resolution} {source} {audio} {video_encode}"
@@ -2335,13 +2345,13 @@ class Prep():
                 name = f"{title} {year} {alt_title} {season}{episode} {episode_title} {part} {edition} {repack} {source} REMUX {audio}" #SOURCE
                 potential_missing = ['edition', 'description']
             elif type == "ENCODE": #Encode
-                name = f"{title} {year} {alt_title} {season}{episode} {episode_title} {part} {edition} {repack} {resolution} {uhd} {source} {audio} {hdr} {video_encode}" #SOURCE
+                name = f"{title} {year} {alt_title} {season}{episode} {episode_title} {part} {edition} {repack} {resolution} {ds4k} {uhd} {source} {audio} {hdr} {video_encode}" #SOURCE
                 potential_missing = ['edition', 'description']
             elif type == "WEBDL": #WEB-DL
                 name = f"{title} {year} {alt_title} {season}{episode} {episode_title} {part} {edition} {repack} {resolution} {uhd} {service} WEB-DL {audio} {hdr} {video_encode}"
                 potential_missing = ['edition', 'service']
             elif type == "WEBRIP": #WEBRip
-                name = f"{title} {year} {alt_title} {season}{episode} {episode_title} {part} {edition} {repack} {resolution} {uhd} {service} WEBRip {audio} {hdr} {video_encode}"
+                name = f"{title} {year} {alt_title} {season}{episode} {episode_title} {part} {edition} {repack} {resolution} {ds4k} {uhd} {service} WEBRip {audio} {hdr} {video_encode}"
                 potential_missing = ['edition', 'service']
             elif type == "HDTV": #HDTV
                 name = f"{title} {year} {alt_title} {season}{episode} {episode_title} {part} {edition} {repack} {resolution} {source} {audio} {video_encode}"
