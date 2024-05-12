@@ -2583,7 +2583,8 @@ class Prep():
 
             meta['episode_title_storage'] = guessit(video,{"excludes" : "part"}).get('episode_title', '')
             if meta['season'] == "S00" or meta['episode'] == "E00":
-                meta['episode_title'] = meta['episode_title_storage']
+                if meta['tv_pack'] == 0: # Only use the episode title when it isn't a full specials pack
+                    meta['episode_title'] = meta['episode_title_storage']
 
             # Guess the part of the episode (if available)
             meta['part'] = ""
