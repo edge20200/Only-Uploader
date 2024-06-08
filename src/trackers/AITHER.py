@@ -28,7 +28,7 @@ class AITHER():
         self.signature = f"\n[center][url=https://aither.cc/]Created by Upload Assistant[/url][/center]"
         self.banned_groups = ['4K4U', 'AROMA', 'EMBER', 'FGT', 'Hi10', 'ION10', 'Judas', 'LAMA', 'MeGusta', 'QxR', 'RARBG', 'SPDVD', 'STUTTERSHIT', 'SWTYBLZ', 'Sicario', 'TAoE', 'TGx', 'TSP', 'TSPxL', 'Tigole', 'Weasley[HONE]', 'Will1869', 'YIFY', 'd3g', 'nikt0', 'x0r']
         pass
-    
+
     async def upload(self, meta):
         common = COMMON(config=self.config)
         await common.edit_torrent(meta, self.tracker, self.source_flag)
@@ -54,7 +54,7 @@ class AITHER():
             'name' : name,
             'description' : desc,
             'mediainfo' : mi_dump,
-            'bdinfo' : bd_dump, 
+            'bdinfo' : bd_dump,
             'category_id' : cat_id,
             'type_id' : type_id,
             'resolution_id' : resolution_id,
@@ -85,7 +85,7 @@ class AITHER():
         if self.config['TRACKERS'][self.tracker].get('internal', False) == True:
             if meta['tag'] != "" and (meta['tag'][1:] in self.config['TRACKERS'][self.tracker].get('internal_groups', [])):
                 data['internal'] = 1
-        
+
         if meta.get('category') == "TV":
             data['season_number'] = meta.get('season_int', '0')
             data['episode_number'] = meta.get('episode_int', '0')
@@ -95,7 +95,7 @@ class AITHER():
                 console.print(response.json())
             except:
                 console.print("It may have uploaded, go check")
-                return 
+                return
         else:
             console.print(f"[cyan]Request Data:")
             console.print(data)
@@ -109,7 +109,7 @@ class AITHER():
         if meta['is_disc'] != "BDMV":
             with open(f"{meta.get('base_dir')}/tmp/{meta.get('uuid')}/MediaInfo.json", 'r', encoding='utf-8') as f:
                 mi = json.load(f)
-            
+
             for track in mi['media']['track']:
                 if track['@type'] == "Audio":
                     if track.get('Language', 'None').startswith('en'):
@@ -132,17 +132,17 @@ class AITHER():
 
     async def get_cat_id(self, category_name):
         category_id = {
-            'MOVIE': '1', 
-            'TV': '2', 
+            'MOVIE': '1',
+            'TV': '2',
             }.get(category_name, '0')
         return category_id
 
     async def get_type_id(self, type):
         type_id = {
-            'DISC': '1', 
+            'DISC': '1',
             'REMUX': '2',
-            'WEBDL': '4', 
-            'WEBRIP': '5', 
+            'WEBDL': '4',
+            'WEBRIP': '5',
             'HDTV': '6',
             'ENCODE': '3'
             }.get(type, '0')
@@ -150,22 +150,22 @@ class AITHER():
 
     async def get_res_id(self, resolution):
         resolution_id = {
-            '8640p':'10', 
-            '4320p': '1', 
-            '2160p': '2', 
+            '8640p':'10',
+            '4320p': '1',
+            '2160p': '2',
             '1440p' : '3',
             '1080p': '3',
-            '1080i':'4', 
-            '720p': '5',  
-            '576p': '6', 
+            '1080i':'4',
+            '720p': '5',
+            '576p': '6',
             '576i': '7',
-            '480p': '8', 
+            '480p': '8',
             '480i': '9'
             }.get(resolution, '10')
         return resolution_id
 
 
-   
+
 
 
     async def search_existing(self, meta):
@@ -183,7 +183,7 @@ class AITHER():
             params['name'] = params['name'] + f" {meta.get('season', '')}{meta.get('episode', '')}"
         if meta.get('edition', "") != "":
             params['name'] = params['name'] + f" {meta['edition']}"
-        
+
         try:
             response = requests.get(url=self.search_url, params=params)
             response = response.json()

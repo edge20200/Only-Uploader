@@ -12,7 +12,7 @@ import re
 import platform
 from unidecode import unidecode
 
-from src.console import console 
+from src.console import console
 
 
 class THR():
@@ -29,7 +29,7 @@ class THR():
         self.password = config['TRACKERS']['THR'].get('password')
         self.banned_groups = [""]
         pass
-    
+
     async def upload(self, session, meta):
         await self.edit_torrent(meta)
         cat_id = await self.get_cat_id(meta)
@@ -65,12 +65,12 @@ class THR():
         with open(f"{meta['base_dir']}/tmp/{meta['uuid']}/[THR]DESCRIPTION.txt", 'r') as f:
             desc = f.read()
             f.close()
-        
+
         torrent_path = os.path.abspath(f"{meta['base_dir']}/tmp/{meta['uuid']}/[THR]{meta['clean_name']}.torrent")
         with open(torrent_path, 'rb') as f:
             tfile = f.read()
             f.close()
-        
+
         #Upload Form
         url = 'https://www.torrenthr.org/takeupload.php'
         files = {
@@ -110,13 +110,13 @@ class THR():
                 if meta['debug']:
                     console.print(response.text)
                 console.print("It may have uploaded, go check")
-                return 
+                return
         else:
             console.print(f"[cyan]Request Data:")
             console.print(payload)
-            
-    
-    
+
+
+
     async def get_cat_id(self, meta):
         if meta['category'] == "MOVIE":
             if meta.get('is_disc') == "BMDV":
@@ -175,8 +175,8 @@ class THR():
             THR_torrent.metainfo['announce'] = self.config['TRACKERS']['THR']['announce_url']
             THR_torrent.metainfo['info']['source'] = "[https://www.torrenthr.org] TorrentHR.org"
             Torrent.copy(THR_torrent).write(f"{meta['base_dir']}/tmp/{meta['uuid']}/[THR]{meta['clean_name']}.torrent", overwrite=True)
-        return 
-        
+        return
+
     async def edit_desc(self, meta):
         pronfo = False
         base = open(f"{meta['base_dir']}/tmp/{meta['uuid']}/DESCRIPTION.txt", 'r').read()
@@ -254,7 +254,7 @@ class THR():
                     console.print('[bold red]Error parsing pronfo response, using THR parser instead')
                     if meta['debug']:
                         console.print(f"[red]{response}")
-                        console.print(response.text) 
+                        console.print(response.text)
 
             for each in image_list[:int(meta['screens'])]:
                 desc.write(f"\n[img]{each}[/img]\n")
@@ -267,7 +267,7 @@ class THR():
             desc.close()
         return pronfo
 
-   
+
 
 
     def search_existing(self, session, imdb_id):

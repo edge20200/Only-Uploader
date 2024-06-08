@@ -28,7 +28,7 @@ class TTG():
         self.passan = str(config['TRACKERS']['TTG'].get('login_answer', '')).strip()
         self.uid = str(config['TRACKERS']['TTG'].get('user_id', '')).strip()
         self.passkey = str(config['TRACKERS']['TTG'].get('announce_url', '')).strip().split('/')[-1]
-        
+
         self.signature = None
         self.banned_groups = [""]
 
@@ -53,7 +53,7 @@ class TTG():
                 type_id = 53 # 1080p/i
             if meta['is_disc'] == "BDMV":
                 type_id = 54 # Blu-ray disc
-        
+
         elif meta['category'] == "TV":
             if meta.get('tv_pack', 0) != 1:
                 # TV Singles
@@ -78,8 +78,8 @@ class TTG():
                     type_id = 88 # Japanese
                 if lang in ('ZH', 'CN', 'CMN'):
                     type_id = 90 # Chinese
-            
-        
+
+
         if "documentary" in meta.get("genres", "").lower().replace(' ', '').replace('-', '') or 'documentary' in meta.get("keywords", "").lower().replace(' ', '').replace('-', ''):
             if meta['resolution'].startswith("720"):
                 type_id = 62 # 720p
@@ -87,7 +87,7 @@ class TTG():
                 type_id = 63 # 1080
             if meta.get('is_disc', '') == 'BDMV':
                 type_id = 64 # BDMV
-        
+
         if "animation" in meta.get("genres", "").lower().replace(' ', '').replace('-', '') or 'animation' in meta.get("keywords", "").lower().replace(' ', '').replace('-', ''):
             if meta.get('sd', 1) == 0:
                 type_id = 58
@@ -153,11 +153,11 @@ class TTG():
                 'name' : ttg_name,
                 'type' : await self.get_type_id(meta),
                 'descr' : ttg_desc.rstrip(),
-                
+
 
                 'anonymity' : await self.get_anon(meta['anon']),
                 'nodistr' : 'no',
-                
+
             }
             url = "https://totheglory.im/takeupload.php"
             if int(meta['imdb_id'].replace('tt', '')) != 0:
@@ -175,7 +175,7 @@ class TTG():
                     up = session.post(url=url, data=data, files=files)
                     torrentFile.close()
                     mi_dump.close()
-                    
+
                     if up.url.startswith("https://totheglory.im/details.php?id="):
                         console.print(f"[green]Uploaded to: [yellow]{up.url}[/yellow][/green]")
                         id = re.search(r"(id=)(\d+)", urlparse(up.url).query).group(2)
@@ -194,7 +194,7 @@ class TTG():
             cookiefile = os.path.abspath(f"{meta['base_dir']}/data/cookies/TTG.pkl")
             with open(cookiefile, 'rb') as cf:
                 session.cookies.update(pickle.load(cf))
-            
+
             if int(meta['imdb_id'].replace('tt', '')) != 0:
                 imdb = f"imdb{meta['imdb_id'].replace('tt', '')}"
             else:
@@ -218,7 +218,7 @@ class TTG():
 
         return dupes
 
-    
+
 
 
     async def validate_credentials(self, meta):
@@ -238,7 +238,7 @@ class TTG():
             else:
                 return False
         return True
-    
+
     async def validate_cookies(self, meta, cookiefile):
         url = "https://totheglory.im"
         if os.path.exists(cookiefile):
@@ -301,7 +301,7 @@ class TTG():
             if int(meta.get('imdb_id', '0').replace('tt', '')) != 0:
                 ptgen = await common.ptgen(meta)
                 if ptgen.strip() != '':
-                    descfile.write(ptgen)   
+                    descfile.write(ptgen)
 
             # Add This line for all web-dls
             if meta['type'] == 'WEBDL' and meta.get('service_longname', '') != '' and meta.get('description', None) == None:
@@ -330,7 +330,7 @@ class TTG():
             desc = re.sub(r"(\[img=\d+)]", "[img]", desc, flags=re.IGNORECASE)
             descfile.write(desc)
             images = meta['image_list']
-            if len(images) > 0: 
+            if len(images) > 0:
                 descfile.write("[center]")
                 for each in range(len(images[:int(meta['screens'])])):
                     web_url = images[each]['web_url']

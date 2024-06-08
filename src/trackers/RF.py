@@ -30,7 +30,7 @@ class RF():
         self.forum_link = "\n[center][url=https://github.com/edge20200/UploadAssistant]Created by Upload Assistant[/url][/center]"
         self.banned_groups = [""]
         pass
-    
+
     async def upload(self, meta):
         common = COMMON(config=self.config)
         await common.edit_torrent(meta, self.tracker, self.source_flag)
@@ -82,7 +82,7 @@ class RF():
         if self.config['TRACKERS'][self.tracker].get('internal', False) == True:
             if meta['tag'] != "" and (meta['tag'][1:] in self.config['TRACKERS'][self.tracker].get('internal_groups', [])):
                 data['internal'] = 1
-                
+
         if region_id != 0:
             data['region_id'] = region_id
         if distributor_id != 0:

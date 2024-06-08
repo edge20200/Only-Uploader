@@ -1,6 +1,6 @@
 config = {
     "DEFAULT" : {
-    
+
         # ------ READ THIS ------
         # Any lines starting with the # symbol are commented and will not be used.
         # If you change any of these options, remove the #
@@ -18,7 +18,7 @@ config = {
         "img_host_3": "imgbox",
 	"img_host_4": "pixhost",
         "img_host_5": "lensdump",
-	"img_host_6": "oeimg",    
+	"img_host_6": "oeimg",
 
 
         "screens" : "6",
@@ -145,7 +145,7 @@ config = {
             "api_key" : "CBR api key",
             "announce_url" : "https://capybarabr.com/announce/customannounceurl",
             # "anon" : False
-        },   
+        },
         "LST" : {
             "api_key" : "LST api key",
             "announce_url" : "https://lst.gg/announce/customannounceurl",
@@ -239,13 +239,13 @@ config = {
             # "torrent_storage_dir" : "path/to/BT_backup folder"
             # "qbit_tag" : "tag",
             # "qbit_cat" : "category"
-            
+
             # Content Layout for adding .torrents: "Original"(recommended)/"Subfolder"/"NoSubfolder"
             "content_layout" : "Original"
-            
+
             # Enable automatic torrent management if listed path(s) are present in the path
                 # If using remote path mapping, use remote path
-                # For using multiple paths, use a list ["path1", "path2"] 
+                # For using multiple paths, use a list ["path1", "path2"]
             # "automatic_management_paths" : ""
 
 
@@ -276,7 +276,7 @@ config = {
             "deluge_user" : "username",
             "deluge_pass" : "password",
             # "torrent_storage_dir" : "path/to/session folder",
-            
+
             # Remote path mapping (docker/etc.) CASE SENSITIVE
             # "local_path" : "/LocalPath",
             # "remote_path" : "/RemotePath"

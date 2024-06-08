@@ -34,25 +34,25 @@ class JPTV():
         self.signature = None
         self.banned_groups = [""]
         pass
-    
+
     async def get_cat_id(self, meta):
         category_id = {
-            'MOVIE': '1', 
-            'TV': '2', 
+            'MOVIE': '1',
+            'TV': '2',
         }.get(meta['category'], '0')
         if meta['anime']:
             category_id = {
-                'MOVIE': '7', 
-                'TV': '9', 
+                'MOVIE': '7',
+                'TV': '9',
             }.get(meta['category'], '0')
         return category_id
 
     async def get_type_id(self, type):
         type_id = {
-            'DISC': '16', 
+            'DISC': '16',
             'REMUX': '18',
-            'WEBDL': '4', 
-            'WEBRIP': '5', 
+            'WEBDL': '4',
+            'WEBRIP': '5',
             'HDTV': '6',
             'ENCODE': '3'
             }.get(type, '0')
@@ -64,16 +64,16 @@ class JPTV():
 
     async def get_res_id(self, resolution):
         resolution_id = {
-            '8640p':'10', 
-            '4320p': '1', 
-            '2160p': '2', 
+            '8640p':'10',
+            '4320p': '1',
+            '2160p': '2',
             '1440p' : '3',
             '1080p': '3',
-            '1080i':'4', 
-            '720p': '5',  
-            '576p': '6', 
+            '1080i':'4',
+            '720p': '5',
+            '576p': '6',
             '576i': '7',
-            '480p': '8', 
+            '480p': '8',
             '480i': '9'
             }.get(resolution, '10')
         return resolution_id
@@ -111,7 +111,7 @@ class JPTV():
             'name' : jptv_name,
             'description' : desc,
             'mediainfo' : mi_dump,
-            # 'bdinfo' : bd_dump, 
+            # 'bdinfo' : bd_dump,
             'category_id' : cat_id,
             'type_id' : type_id,
             'resolution_id' : resolution_id,
@@ -135,7 +135,7 @@ class JPTV():
         if self.config['TRACKERS'][self.tracker].get('internal', False) == True:
             if meta['tag'] != "" and (meta['tag'][1:] in self.config['TRACKERS'][self.tracker].get('internal_groups', [])):
                 data['internal'] = 1
-                
+
         if region_id != 0:
             data['region_id'] = region_id
         if distributor_id != 0:
@@ -149,21 +149,21 @@ class JPTV():
         params = {
             'api_token' : self.config['TRACKERS'][self.tracker]['api_key'].strip()
         }
-        
+
         if meta['debug'] == False:
             response = requests.post(url=self.upload_url, files=files, data=data, headers=headers, params=params)
             try:
                 console.print(response.json())
             except:
                 console.print("It may have uploaded, go check")
-                return 
+                return
         else:
             console.print(f"[cyan]Request Data:")
             console.print(data)
         open_torrent.close()
 
 
-   
+
 
 
     async def search_existing(self, meta):
@@ -195,7 +195,7 @@ class JPTV():
             await asyncio.sleep(5)
 
         return dupes
-    
+
 
     async def edit_name(self, meta):
         name = meta.get('name')

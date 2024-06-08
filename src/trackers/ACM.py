@@ -34,11 +34,11 @@ class ACM():
         self.signature = None
         self.banned_groups = [""]
         pass
-    
+
     async def get_cat_id(self, category_name):
         category_id = {
-            'MOVIE': '1', 
-            'TV': '2', 
+            'MOVIE': '1',
+            'TV': '2',
             }.get(category_name, '0')
         return category_id
 
@@ -60,7 +60,7 @@ class ACM():
             if "DVD5" in meta['dvd_size']:
                 type_string = "DVD 5"
             elif "DVD9" in meta['dvd_size']:
-                type_string = "DVD 9"    
+                type_string = "DVD 9"
         else:
             if meta['type'] == "REMUX":
                 if meta['source'] == "BluRay":
@@ -73,18 +73,18 @@ class ACM():
             #     acceptable_res = ["2160p", "1080p", "1080i", "720p", "576p", "576i", "540p", "480p", "Other"]
             #     if meta['resolution'] in acceptable_res:
             #         type_id = meta['resolution']
-            #     else:   
+            #     else:
             #         type_id = "Other"
         return type_string
 
     async def get_type_id(self, type):
         type_id = {
-            'UHD 100': '1',  
+            'UHD 100': '1',
             'UHD 66': '2',
             'UHD 50': '3',
             'UHD REMUX': '12',
             'BD 50': '4',
-            'BD 25': '5',   
+            'BD 25': '5',
             'DVD 5': '14',
             'REMUX': '7',
             'WEBDL': '9',
@@ -96,23 +96,23 @@ class ACM():
 
     async def get_res_id(self, resolution):
         resolution_id = {
-            '2160p': '1', 
+            '2160p': '1',
             '1080p': '2',
-            '1080i':'2', 
-            '720p': '3',  
-            '576p': '4', 
+            '1080i':'2',
+            '720p': '3',
+            '576p': '4',
             '576i': '4',
-            '480p': '5', 
+            '480p': '5',
             '480i': '5'
             }.get(resolution, '10')
-        return resolution_id    
+        return resolution_id
 
     #ACM rejects uploads with more that 4 keywords
     async def get_keywords(self, keywords):
         if keywords !='':
-            keywords_list = keywords.split(',')   
+            keywords_list = keywords.split(',')
             keywords_list = [keyword for keyword in keywords_list if " " not in keyword][:4]
-            keywords = ', '.join( keywords_list) 
+            keywords = ', '.join( keywords_list)
         return keywords
 
     def get_subtitles(self, meta):
@@ -179,12 +179,12 @@ class ACM():
                 for lang, subID in sub_lang_map.items():
                     if language in lang and subID not in sub_langs:
                         sub_langs.append(subID)
-        
-        # if sub_langs == []: 
+
+        # if sub_langs == []:
         #     sub_langs = [44] # No Subtitle
         return sub_langs
 
-    def get_subs_tag(self, subs):   
+    def get_subs_tag(self, subs):
         if subs == []:
             return ' [No subs]'
         elif 'Eng' in subs:
@@ -218,7 +218,7 @@ class ACM():
             bd_dump = ""
             for each in meta['discs']:
                 bd_dump = bd_dump + each['summary'].strip() + "\n\n"
-        else:   
+        else:
             mi_dump = open(f"{meta['base_dir']}/tmp/{meta['uuid']}/MEDIAINFO.txt", 'r', encoding='utf-8').read()
             bd_dump = None
         desc = open(f"{meta['base_dir']}/tmp/{meta['uuid']}/[{self.tracker}]DESCRIPTION.txt", 'r').read()
@@ -228,7 +228,7 @@ class ACM():
             'name' : acm_name,
             'description' : desc,
             'mediainfo' : mi_dump,
-            'bdinfo' : bd_dump, 
+            'bdinfo' : bd_dump,
             'category_id' : cat_id,
             'type_id' : type_id,
             'resolution_id' : resolution_id,
@@ -264,21 +264,21 @@ class ACM():
         params = {
             'api_token' : self.config['TRACKERS'][self.tracker]['api_key'].strip()
         }
-        
+
         if meta['debug'] == False:
             response = requests.post(url=self.upload_url, files=files, data=data, headers=headers, params=params)
             try:
                 console.print(response.json())
             except:
                 console.print("It may have uploaded, go check")
-                return 
+                return
         else:
             console.print(f"[cyan]Request Data:")
             console.print(data)
         open_torrent.close()
 
 
-   
+
 
 
     async def search_existing(self, meta):
@@ -380,7 +380,7 @@ class ACM():
             desc = desc.replace('[img]', '[img=300]')
             descfile.write(desc)
             images = meta['image_list']
-            if len(images) > 0: 
+            if len(images) > 0:
                 descfile.write("[center]")
                 for each in range(len(images[:int(meta['screens'])])):
                     web_url = images[each]['web_url']

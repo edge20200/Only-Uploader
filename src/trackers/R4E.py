@@ -28,7 +28,7 @@ class R4E():
         self.signature = None
         self.banned_groups = [""]
         pass
-    
+
     async def upload(self, meta):
         common = COMMON(config=self.config)
         await common.edit_torrent(meta, self.tracker, self.source_flag)
@@ -53,7 +53,7 @@ class R4E():
             'name' : name,
             'description' : desc,
             'mediainfo' : mi_dump,
-            'bdinfo' : bd_dump, 
+            'bdinfo' : bd_dump,
             'category_id' : cat_id,
             'type_id' : type_id,
             'tmdb' : meta['tmdb'],
@@ -82,11 +82,11 @@ class R4E():
         if meta['debug'] == False:
             response = requests.post(url=url, files=files, data=data, headers=headers)
             try:
-                
+
                 console.print(response.json())
             except:
                 console.print("It may have uploaded, go check")
-                return 
+                return
         else:
             console.print(f"[cyan]Request Data:")
             console.print(data)
@@ -114,21 +114,21 @@ class R4E():
             if is_docu:
                 category_id = '2' # TV Documentary
         else:
-            category_id = '24' 
+            category_id = '24'
         return category_id
 
     async def get_type_id(self, type):
         type_id = {
-            '8640p':'2160p', 
-            '4320p': '2160p', 
-            '2160p': '2160p', 
+            '8640p':'2160p',
+            '4320p': '2160p',
+            '2160p': '2160p',
             '1440p' : '1080p',
             '1080p': '1080p',
-            '1080i':'1080i', 
-            '720p': '720p',  
-            '576p': 'SD', 
+            '1080i':'1080i',
+            '720p': '720p',
+            '576p': 'SD',
             '576i': 'SD',
-            '480p': 'SD', 
+            '480p': 'SD',
             '480i': 'SD'
             }.get(type, '10')
         return type_id
@@ -138,7 +138,7 @@ class R4E():
         for each in genres:
             if each['id'] == 99:
                 is_docu = True
-        return is_docu 
+        return is_docu
 
     async def search_existing(self, meta):
         dupes = []

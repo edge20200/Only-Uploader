@@ -39,7 +39,7 @@ class PTER():
             console.print('[red]Failed to validate cookies. Please confirm that the site is up and your passkey is valid.')
             return False
         return True
-    
+
     async def validate_cookies(self, meta):
         common = COMMON(config=self.config)
         url = "https://pterclub.com"
@@ -48,7 +48,7 @@ class PTER():
             with requests.Session() as session:
                 session.cookies.update(await common.parseCookieFile(cookiefile))
                 resp = session.get(url=url)
-               
+
                 if meta['debug']:
                     console.print('[cyan]Cookies:')
                     console.print(session.cookies.get_dict())
@@ -61,7 +61,7 @@ class PTER():
         else:
             console.print("[bold red]Missing Cookie File. (data/cookies/PTER.txt)")
             return False
-    
+
     async def search_existing(self, meta):
         dupes = []
         common = COMMON(config=self.config)
@@ -91,27 +91,27 @@ class PTER():
 
     async def get_type_category_id(self, meta):
         cat_id = "EXIT"
-        
+
         if meta['category'] == 'MOVIE':
             cat_id = 401
-       
+
         if meta['category'] == 'TV':
             cat_id = 404
-        
+
         if 'documentary' in meta.get("genres", "").lower() or 'documentary' in meta.get("keywords", "").lower():
             cat_id = 402
-        
+
         if 'Animation' in meta.get("genres", "").lower() or 'Animation' in meta.get("keywords", "").lower():
             cat_id = 403
-        
+
         return cat_id
-    
+
     async def get_area_id(self, meta):
-        
+
         area_id=8
         area_map = { #To do
             "中国大陆": 1, "中国香港": 2, "中国台湾": 3, "美国": 4, "日本": 6, "韩国": 5,
-            "印度": 7, "法国": 4, "意大利": 4, "德国": 4, "西班牙": 4, "葡萄牙": 4, 
+            "印度": 7, "法国": 4, "意大利": 4, "德国": 4, "西班牙": 4, "葡萄牙": 4,
             "英国": 4, "阿根廷": 8, "澳大利亚": 4, "比利时": 4,
             "巴西": 8, "加拿大": 4, "瑞士": 4, "智利": 8,
         }
@@ -120,8 +120,8 @@ class PTER():
             if area in regions:
                 return area_map[area]
         return area_id
-        
-       
+
+
 
     async def get_type_medium_id(self, meta):
         medium_id = "EXIT"
@@ -131,14 +131,14 @@ class PTER():
                 medium_id = 1
             else:
                 medium_id = 2 #BD Discs
-        
+
         if meta.get('is_disc', '') == "DVD":
                 medium_id = 7
-            
+
         # 4 = HDTV
         if meta.get('type', '') == "HDTV":
             medium_id = 4
-            
+
         # 6 = Encode
         if meta.get('type', '') in ("ENCODE", "WEBRIP"):
             medium_id = 6
@@ -163,9 +163,9 @@ class PTER():
             if int(meta.get('imdb_id', '0').replace('tt', '')) != 0:
                 ptgen = await common.ptgen(meta, self.ptgen_api, self.ptgen_retry)
                 if ptgen.strip() != '':
-                    descfile.write(ptgen)   
+                    descfile.write(ptgen)
 
-            
+
             bbcode = BBCODE()
             if meta.get('discs', []) != []:
                 discs = meta['discs']
@@ -189,27 +189,27 @@ class PTER():
             desc = desc.replace('[img]', '[img]')
             desc = re.sub(r"(\[img=\d+)]", "[img]", desc, flags=re.IGNORECASE)
             descfile.write(desc)
-            
+
             if self.rehost_images == True:
                 console.print("[green]Rehosting Images...")
                 images = await self.pterimg_upload(meta)
-                if len(images) > 0: 
-                    descfile.write("[center]")
-                    for each in range(len(images[:int(meta['screens'])])):
-                        web_url = images[each]['web_url']
-                        img_url = images[each]['img_url']
-                        descfile.write(f"[url={web_url}][img]{img_url}[/img][/url]")
-                    descfile.write("[/center]")  
-            else:
-                images = meta['image_list']
-                if len(images) > 0: 
+                if len(images) > 0:
                     descfile.write("[center]")
                     for each in range(len(images[:int(meta['screens'])])):
                         web_url = images[each]['web_url']
                         img_url = images[each]['img_url']
                         descfile.write(f"[url={web_url}][img]{img_url}[/img][/url]")
                     descfile.write("[/center]")
-            
+            else:
+                images = meta['image_list']
+                if len(images) > 0:
+                    descfile.write("[center]")
+                    for each in range(len(images[:int(meta['screens'])])):
+                        web_url = images[each]['web_url']
+                        img_url = images[each]['img_url']
+                        descfile.write(f"[url={web_url}][img]{img_url}[/img][/url]")
+                    descfile.write("[/center]")
+
             if self.signature != None:
                 descfile.write("\n\n")
                 descfile.write(self.signature)
@@ -232,8 +232,8 @@ class PTER():
                 auth_token = re.search(r'auth_token.*?\"(\w+)\"', r.text).groups()[0]
             else:
                 data = {
-                    'login-subject': self.username, 
-                    'password': self.password, 
+                    'login-subject': self.username,
+                    'password': self.password,
                     'keep-login': 1
                 }
                 r = session.get("https://s3.pterclub.com")
@@ -244,7 +244,7 @@ class PTER():
                 auth_token = re.search(r'auth_token = *?\"(\w+)\"', loginresponse.text).groups()[0]
                 with open(cookiefile, 'wb') as cf:
                     pickle.dump(session.cookies, cf)
-        
+
         return auth_token
 
     async def validate_login(self, response):
@@ -260,8 +260,8 @@ class PTER():
         image_list=[]
         data = {
             'type': 'file',
-            'action': 'upload', 
-            'nsfw': 0, 
+            'action': 'upload',
+            'nsfw': 0,
             'auth_token': await self.get_auth_token(meta)
             }
         cookiefile = f"{meta['base_dir']}/data/cookies/Pterimg.pickle"
@@ -278,13 +278,13 @@ class PTER():
                         except json.decoder.JSONDecodeError:
                             res = {}
                         if not req.ok:
-                            if res['error']['message'] in ('重复上传','Duplicated upload'): 
+                            if res['error']['message'] in ('重复上传','Duplicated upload'):
                                 continue
                             raise(f'HTTP {req.status_code}, reason: {res["error"]["message"]}')
                         image_dict = {}
                         image_dict['web_url'] = res['image']['url']
                         image_dict['img_url'] = res['image']['url']
-                        image_list.append(image_dict)           
+                        image_list.append(image_dict)
         return image_list
 
     async def get_anon(self, anon):
@@ -308,7 +308,7 @@ class PTER():
             pter_name = pter_name.replace('H.264', 'x264')
 
         return pter_name
-    
+
     async def is_zhongzi(self, meta):
         if meta.get('is_disc', '') != 'BDMV':
             mi = meta['mediainfo']
@@ -316,11 +316,11 @@ class PTER():
                 if track['@type'] == "Text":
                     language = track.get('Language')
                     if language == "zh":
-                        return 'yes'                        
+                        return 'yes'
         else:
             for language in meta['bdinfo']['subtitles']:
                 if language == "Chinese":
-                    return 'yes' 
+                    return 'yes'
         return None
 
     async def upload(self, meta):
@@ -331,9 +331,9 @@ class PTER():
         desc_file=f"{meta['base_dir']}/tmp/{meta['uuid']}/[{self.tracker}]DESCRIPTION.txt"
         if not os.path.exists(desc_file):
             await self.edit_desc(meta)
-        
+
         pter_name = await self.edit_name(meta)
-       
+
         if meta['bdinfo'] != None:
             mi_dump = open(f"{meta['base_dir']}/tmp/{meta['uuid']}/BD_SUMMARY_00.txt", 'r', encoding='utf-8')
         else:
@@ -341,7 +341,7 @@ class PTER():
 
         pter_desc = open(desc_file, 'r').read()
         torrent_path = f"{meta['base_dir']}/tmp/{meta['uuid']}/[{self.tracker}]{meta['clean_name']}.torrent"
-        
+
         with open(torrent_path, 'rb') as torrentFile:
             if len(meta['filelist']) == 1:
                 torrentFileName = unidecode(os.path.basename(meta['video']).replace(' ', '.'))
@@ -355,8 +355,8 @@ class PTER():
             if meta['ptgen']["trans_title"] != ['']:
                 small_descr=''
                 for title_ in meta['ptgen']["trans_title"]:
-                  small_descr+=f'{title_} / ' 
-                small_descr+="| 类别:"+meta['ptgen']["genre"][0] 
+                  small_descr+=f'{title_} / '
+                small_descr+="| 类别:"+meta['ptgen']["genre"][0]
                 small_descr=small_descr.replace('/ |','|')
             else:
                 small_descr=meta['title']
@@ -372,10 +372,10 @@ class PTER():
             }
 
             if meta.get('personalrelease', False) == True:
-                data["pr"] = "yes"           
+                data["pr"] = "yes"
 
             url = "https://pterclub.com/takeupload.php"
-            
+
             # Submit
             if meta['debug']:
                 console.print(url)
@@ -388,7 +388,7 @@ class PTER():
                         up = session.post(url=url, data=data, files=files)
                         torrentFile.close()
                         mi_dump.close()
-                        
+
                         if up.url.startswith("https://pterclub.com/details.php?id="):
                             console.print(f"[green]Uploaded to: [yellow]{up.url.replace('&uploaded=1','')}[/yellow][/green]")
                             id = re.search(r"(id=)(\d+)", urlparse(up.url).query).group(2)
@@ -410,4 +410,4 @@ class PTER():
             console.print(r.text)
 
 
-    
+
