@@ -123,7 +123,7 @@ class HUNO():
             language = re.sub(r'\(.+\)', '', language)
 
         return f'{codec} {channels} {language}'
-    
+
     def get_basename(self, meta):
         path = next(iter(meta['filelist']), meta['path'])
         return os.path.basename(path)

@@ -30,13 +30,13 @@ class PTP():
         self.source_flag = 'PTP'
         self.api_user = config['TRACKERS']['PTP'].get('ApiUser', '').strip()
         self.api_key = config['TRACKERS']['PTP'].get('ApiKey', '').strip()
-        self.announce_url = config['TRACKERS']['PTP'].get('announce_url', '').strip() 
-        self.username = config['TRACKERS']['PTP'].get('username', '').strip() 
+        self.announce_url = config['TRACKERS']['PTP'].get('announce_url', '').strip()
+        self.username = config['TRACKERS']['PTP'].get('username', '').strip()
         self.password = config['TRACKERS']['PTP'].get('password', '').strip()
-        self.web_source = str2bool(str(config['TRACKERS']['PTP'].get('add_web_source_to_desc', True))) 
+        self.web_source = str2bool(str(config['TRACKERS']['PTP'].get('add_web_source_to_desc', True)))
         self.user_agent = f'Upload Assistant/2.1 ({platform.system()} {platform.release()})'
         self.banned_groups = ['aXXo', 'BRrip', 'CM8', 'CrEwSaDe', 'CTFOH', 'DNL', 'FaNGDiNG0', 'HD2DVD', 'HDTime', 'ION10', 'iPlanet', 'KiNGDOM', 'mHD', 'mSD', 'nHD', 'nikt0', 'nSD', 'NhaNc3', 'OFT', 'PRODJi', 'SANTi', 'STUTTERSHIT', 'ViSION', 'VXT', 'WAF', 'd3g', 'x0r', 'YIFY', 'BMDru']
-    
+
         self.sub_lang_map = {
             ("Arabic", "ara", "ar") : 22,
             ("Brazilian Portuguese", "Brazilian", "Portuguese-BR", 'pt-br') : 49,
@@ -136,7 +136,7 @@ class PTP():
             pass
         console.print(f'[yellow]Could not find any release matching [bold yellow]{filename}[/bold yellow] on PTP')
         return None, None, None
-    
+
     async def get_imdb_from_torrent_id(self, ptp_torrent_id):
         params = {
             'torrentid' : ptp_torrent_id
@@ -167,7 +167,7 @@ class PTP():
                 return None, None
         except Exception:
             return None, None
-    
+
     async def get_ptp_description(self, ptp_torrent_id, is_disc):
         params = {
             'id' : ptp_torrent_id,
@@ -186,7 +186,7 @@ class PTP():
         desc = bbcode.clean_ptp_description(ptp_desc, is_disc)
         console.print(f"[bold green]Successfully grabbed description from PTP")
         return desc
-    
+
 
 
     async def get_group_by_imdb(self, imdb):
@@ -278,7 +278,7 @@ class PTP():
             quality = "High Definition"
         elif meta['resolution'] in ["2160p", "4320p", "8640p"]:
             quality = "Ultra High Definition"
-        
+
 
         params = {
             'id' : groupID,
@@ -458,7 +458,7 @@ class PTP():
                 for lang, subID in sub_lang_map.items():
                     if language in lang and subID not in sub_langs:
                         sub_langs.append(subID)
-        
+
         if sub_langs == []:
             sub_langs = [44] # No Subtitle
         return sub_langs
@@ -489,7 +489,7 @@ class PTP():
                     else:
                         sub_langs.append(v)
                         trumpable.append(4)
-        
+
         sub_langs = list(set(sub_langs))
         trumpable = list(set(trumpable))
         if trumpable == []:
@@ -506,7 +506,7 @@ class PTP():
             remaster_title.append('The Criterion Collection')
         elif meta.get('distributor') in ('MASTERS OF CINEMA', 'MOC'):
             remaster_title.append('Masters of Cinema')
-        
+
         # Editions
         # Director's Cut, Extended Edition, Rifftrax, Theatrical Cut, Uncut, Unrated
         if "director's cut" in meta.get('edition', '').lower():
@@ -527,7 +527,7 @@ class PTP():
 
         # Features
         # 2-Disc Set, 2in1, 2D/3D Edition, 3D Anaglyph, 3D Full SBS, 3D Half OU, 3D Half SBS,
-        # 4K Restoration, 4K Remaster, 
+        # 4K Restoration, 4K Remaster,
         # Extras, Remux,
         if meta.get('type') == "REMUX":
             remaster_title.append("Remux")
@@ -545,7 +545,7 @@ class PTP():
             remaster_title.append('With Commentary')
 
 
-        # HDR10, HDR10+, Dolby Vision, 10-bit, 
+        # HDR10, HDR10+, Dolby Vision, 10-bit,
         # if "Hi10P" in meta.get('video_encode', ''):
         #     remaster_title.append('10-bit')
         if meta.get('hdr', '').strip() == '' and meta.get('bit_depth') == '10':
@@ -604,7 +604,7 @@ class PTP():
                             while ds.is_alive() == True:
                                 await asyncio.sleep(1)
                             new_screens = glob.glob1(f"{meta['base_dir']}/tmp/{meta['uuid']}",f"FILE_{i}-*.png")
-                            images, dummy = prep.upload_screens(meta, 2, 1, 0, 2, new_screens, {})   
+                            images, dummy = prep.upload_screens(meta, 2, 1, 0, 2, new_screens, {})
 
                     if each['type'] == "DVD":
                         desc.write(f"[b][size=3]{each['name']}:[/size][/b]\n")
@@ -622,9 +622,9 @@ class PTP():
                             while ds.is_alive() == True:
                                 await asyncio.sleep(1)
                             new_screens = glob.glob1(f"{meta['base_dir']}/tmp/{meta['uuid']}", f"{meta['discs'][i]['name']}-*.png")
-                            images, dummy = prep.upload_screens(meta, 2, 1, 0, 2, new_screens, {})  
-                        
-                    if len(images) > 0: 
+                            images, dummy = prep.upload_screens(meta, 2, 1, 0, 2, new_screens, {})
+
+                    if len(images) > 0:
                         for each in range(len(images[:int(meta['screens'])])):
                             raw_url = images[each]['raw_url']
                             desc.write(f"[img]{raw_url}[/img]\n")
@@ -658,14 +658,14 @@ class PTP():
                         base2ptp = self.convert_bbcode(base)
                         if base2ptp.strip() != "":
                             desc.write(base2ptp)
-                            desc.write("\n\n")    
-                    if len(images) > 0: 
+                            desc.write("\n\n")
+                    if len(images) > 0:
                         for each in range(len(images[:int(meta['screens'])])):
                             raw_url = images[each]['raw_url']
                             desc.write(f"[img]{raw_url}[/img]\n")
                     desc.write("\n")
 
-        
+
 
     async def get_AntiCsrfToken(self, meta):
         if not os.path.exists(f"{meta['base_dir']}/data/cookies"):
@@ -837,7 +837,7 @@ class PTP():
 
                     raise UploadException(f"Upload to PTP failed: {errorMessage} ({response.status_code}). (We are still on the upload page.)")
 
-                
+
                 # URL format in case of successful upload: https://passthepopcorn.me/torrents.php?id=9329&torrentid=91868
                 match = re.match(r".*?passthepopcorn\.me/torrents\.php\?id=(\d+)&torrentid=(\d+)", response.url)
                 if match is None:
@@ -845,4 +845,4 @@ class PTP():
                     console.print(data)
                     raise UploadException(f"Upload to PTP failed: result URL {response.url} ({response.status_code}) is not the expected one.")
 
-        
+

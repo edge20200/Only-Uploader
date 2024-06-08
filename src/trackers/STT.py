@@ -28,7 +28,7 @@ class STT():
         self.signature = '\n[center][url=https://skipthetrailers.xyz/]Simplicity for the Simpleton  -- SEED UNTIL YOU BLEED -- Powered by Upload Assistant[/url][/center]'
         self.banned_groups = ['Will1869', 'x0r', 'EVO', 'RARBG', 'ZMNT', 'd3g', 'MeGusta', 'FGT', 'nikt0', 'STUTTERSHIT', '$andra', 'AROMA', 'YIFY', 'YTS', 'FROZEN', 'LAMA', 'GalaxyRG']
         pass
-    
+
     async def upload(self, meta):
         common = COMMON(config=self.config)
         await common.edit_torrent(meta, self.tracker, self.source_flag)
@@ -54,7 +54,7 @@ class STT():
             'name' : stt_name,
             'description' : desc,
             'mediainfo' : mi_dump,
-            'bdinfo' : bd_dump, 
+            'bdinfo' : bd_dump,
             'category_id' : cat_id,
             'type_id' : type_id,
             'resolution_id' : resolution_id,
@@ -84,7 +84,7 @@ class STT():
         if self.config['TRACKERS'][self.tracker].get('internal', False) == True:
             if meta['tag'] != "" and (meta['tag'][1:] in self.config['TRACKERS'][self.tracker].get('internal_groups', [])):
                 data['internal'] = 1
-                
+
         if meta.get('category') == "TV":
             console.print('[bold red]This site only ALLOWS Movies.')
         if meta['debug'] == False:
@@ -93,7 +93,7 @@ class STT():
                 console.print(response.json())
             except:
                 console.print("It may have uploaded, go check")
-                return 
+                return
         else:
             console.print(f"[cyan]Request Data:")
             console.print(data)
@@ -113,10 +113,10 @@ class STT():
 
     async def get_type_id(self, type):
         type_id = {
-            'DISC': '1', 
+            'DISC': '1',
             'REMUX': '2',
-            'WEBDL': '4', 
-            'WEBRIP': '5', 
+            'WEBDL': '4',
+            'WEBRIP': '5',
             'FANRES': '6',
             'ENCODE': '3'
             }.get(type, '0')
@@ -124,9 +124,9 @@ class STT():
 
     async def get_res_id(self, resolution):
         resolution_id = {
-            # '8640p':'10', 
-            '4320p': '1', 
-            '2160p': '2', 
+            # '8640p':'10',
+            '4320p': '1',
+            '2160p': '2',
             # '1440p' : '3',
             '1080p': '3',
             '1080i': '4',

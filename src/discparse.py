@@ -9,8 +9,8 @@ from collections import OrderedDict
 import json
 
 from src.console import console
-    
-    
+
+
 class DiscParse():
     def __init__(self):
         pass
@@ -87,18 +87,18 @@ class DiscParse():
                 with open(f"{save_dir}/BD_SUMMARY_EXT.txt", 'w') as f: # write extended BDInfo file
                     f.write(ext_bd_summary.strip())
                     f.close()
-                
+
                 bdinfo = self.parse_bdinfo(bd_summary, files[1], path)
-        
+
                 discs[i]['summary'] = bd_summary.strip()
                 discs[i]['bdinfo'] = bdinfo
                 # shutil.rmtree(f"{base_dir}/tmp")
             else:
                 discs = meta_discs
-        
+
         return discs, discs[0]['bdinfo']
-        
-            
+
+
 
     def parse_bdinfo(self, bdinfo_input, files, path):
         bdinfo = dict()
@@ -142,14 +142,14 @@ class DiscParse():
                     hdr_dv = ""
                     color = ""
                 bdinfo['video'].append({
-                    'codec': split2[0].strip(), 
-                    'bitrate': split2[1].strip(), 
-                    'res': split2[n+2].strip(), 
-                    'fps': split2[n+3].strip(), 
+                    'codec': split2[0].strip(),
+                    'bitrate': split2[1].strip(),
+                    'res': split2[n+2].strip(),
+                    'fps': split2[n+3].strip(),
                     'aspect_ratio' : split2[n+4].strip(),
                     'profile': split2[n+5].strip(),
                     'bit_depth' : bit_depth,
-                    'hdr_dv' : hdr_dv, 
+                    'hdr_dv' : hdr_dv,
                     'color' : color,
                     '3d' : three_dim,
                     })
@@ -170,11 +170,11 @@ class DiscParse():
                 except:
                     bit_depth = ""
                 bdinfo['audio'].append({
-                    'language' : split2[0].strip(), 
-                    'codec' : split2[1].strip(), 
-                    'channels' : split2[n+2].strip(), 
-                    'sample_rate' : split2[n+3].strip(), 
-                    'bitrate' : split2[n+4].strip(), 
+                    'language' : split2[0].strip(),
+                    'codec' : split2[1].strip(),
+                    'channels' : split2[n+2].strip(),
+                    'sample_rate' : split2[n+3].strip(),
+                    'bitrate' : split2[n+4].strip(),
                     'bit_depth' : bit_depth, # Also DialNorm, but is not in use anywhere yet
                     'atmos_why_you_be_like_this': fuckatmos,
                     })
@@ -207,7 +207,7 @@ class DiscParse():
         return bdinfo
 
 
-    
+
     """
     Parse VIDEO_TS and get mediainfos
     """
@@ -232,10 +232,10 @@ class DiscParse():
                 vob_set_mi = MediaInfo.parse(f"VTS_{vob_set[0][:2]}_0.IFO", output='JSON')
                 vob_set_mi = json.loads(vob_set_mi)
                 vob_set_duration = vob_set_mi['media']['track'][1]['Duration']
-                      
-                
+
+
                 # If the duration of the new vob set > main set by more than 10% then it's our new main set
-                # This should make it so TV shows pick the first episode 
+                # This should make it so TV shows pick the first episode
                 if (float(vob_set_duration) * 1.00) > (float(main_set_duration) * 1.10) or len(main_set) < 1:
                     main_set = vob_set
                     main_set_duration = vob_set_duration
@@ -247,7 +247,7 @@ class DiscParse():
             each['ifo_mi'] = MediaInfo.parse(os.path.basename(ifo), output='STRING', full=False, mediainfo_options={'inform_version' : '1'}).replace('\r\n', '\n')
             each['vob_mi_full'] = MediaInfo.parse(vob, output='STRING', full=False, mediainfo_options={'inform_version' : '1'}).replace('\r\n', '\n')
             each['ifo_mi_full'] = MediaInfo.parse(ifo, output='STRING', full=False, mediainfo_options={'inform_version' : '1'}).replace('\r\n', '\n')
-            
+
 
             size = sum(os.path.getsize(f) for f in os.listdir('.') if os.path.isfile(f))/float(1<<30)
             if size <= 7.95:
@@ -256,7 +256,7 @@ class DiscParse():
                     dvd_size = "DVD5"
             each['size'] = dvd_size
         return discs
-    
+
     async def get_hddvd_info(self, discs):
         for each in discs:
             path = each.get('path')

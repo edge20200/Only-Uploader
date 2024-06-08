@@ -3,7 +3,7 @@
 import asyncio
 import requests
 import os
-from guessit import guessit 
+from guessit import guessit
 from str2bool import str2bool
 
 from src.trackers.COMMON import COMMON
@@ -34,7 +34,7 @@ class NBL():
         self.api_key = self.config['TRACKERS'][self.tracker]['api_key'].strip()
         self.banned_groups = ['0neshot', '3LTON', '4yEo', '[Oj]', 'AFG', 'AkihitoSubs', 'AniHLS', 'Anime', 'Time', 'AnimeRG', 'AniURL', 'ASW', 'BakedFish', 'bonkai77', 'Cleo', 'DeadFish', 'DeeJayAhmed', 'ELiTE', 'EMBER', 'eSc', 'FGT', 'FUM', 'GERMini', 'HAiKU', 'Hi10', 'ION10', 'JacobSwaggedUp', 'JIVE', 'Judas', 'LOAD', 'MeGusta', 'Mr.Deadpool', 'mSD', 'NemDiggers', 'neoHEVC', 'NhaNc3', 'NOIVTC', 'PlaySD', 'playXD', 'project-gxs', 'PSA', 'QaS', 'Ranger', 'RAPiDCOWS', 'Raze', 'Reaktor', 'REsuRRecTioN', 'RMTeam', 'SpaceFish', 'SPASM', 'SSA', 'Telly', 'Tenrai-Sensei', 'TM', 'Trix', 'URANiME', 'VipapkStudios', 'ViSiON', 'Wardevil', 'xRed', 'XS', 'YakuboEncodes', 'YuiSubs', 'ZKBL', 'ZmN', 'ZMNT']
         pass
-    
+
 
     async def get_cat_id(self, meta):
         if meta.get('tv_pack', 0) == 1:
@@ -70,7 +70,7 @@ class NBL():
             'category' : await self.get_cat_id(meta),
             'ignoredupes' : 'on'
         }
-        
+
         if meta['debug'] == False:
             response = requests.post(url=self.upload_url, files=files, data=data)
             try:
@@ -83,14 +83,14 @@ class NBL():
             except:
                 console.print_exception()
                 console.print("[bold yellow]It may have uploaded, go check")
-                return 
+                return
         else:
             console.print(f"[cyan]Request Data:")
             console.print(data)
         open_torrent.close()
 
 
-   
+
 
 
     async def search_existing(self, meta):
@@ -107,7 +107,7 @@ class NBL():
             'id' : 1,
             'method' : 'getTorrents',
             'params' : [
-                self.api_key, 
+                self.api_key,
                 search_term
             ]
         }

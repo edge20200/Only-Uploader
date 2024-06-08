@@ -28,7 +28,7 @@ class FL():
         self.uploader_name = config['TRACKERS'][self.tracker].get('uploader_name')
         self.signature = None
         self.banned_groups = [""]
-    
+
 
     async def get_category_id(self, meta):
         has_ro_audio, has_ro_sub = await self.get_ro_tracks(meta)
@@ -51,7 +51,7 @@ class FL():
             if has_ro_sub and meta.get('sd', 0) == 0 and meta['resolution'] != '2160p':
                 # 19 = Movie + RO
                 cat_id = 19
-        
+
         if meta['category'] == 'TV':
             # 21 = TV HD
             cat_id = 21
@@ -61,12 +61,12 @@ class FL():
             elif meta.get('sd', 0) == 1:
                 # 23 = TV SD
                 cat_id = 23
-            
+
         if meta['is_disc'] == "DVD":
             # 2 = DVD
             cat_id = 2
             if has_ro_sub:
-                # 3 = DVD + RO 
+                # 3 = DVD + RO
                 cat_id = 3
 
         if meta.get('anime', False) == True:
@@ -100,9 +100,9 @@ class FL():
         fl_name = ' '.join(fl_name.split())
         fl_name = re.sub(r"[^0-9a-zA-ZÀ-ÿ. &+'\-\[\]]+", "", fl_name)
         fl_name = fl_name.replace(' ', '.').replace('..', '.')
-        return fl_name 
+        return fl_name
 
-    
+
     ###############################################################
     ######   STOP HERE UNLESS EXTRA MODIFICATION IS NEEDED   ######
     ###############################################################
@@ -114,7 +114,7 @@ class FL():
         fl_name = await self.edit_name(meta)
         cat_id = await self.get_category_id(meta)
         has_ro_audio, has_ro_sub = await self.get_ro_tracks(meta)
-        
+
         # Confirm the correct naming order for FL
         cli_ui.info(f"Filelist name: {fl_name}")
         if meta.get('unattended', False) == False:
@@ -184,7 +184,7 @@ class FL():
                         session.cookies.update(pickle.load(cf))
                     up = session.post(url=url, data=data, files=files)
                     torrentFile.close()
-                    
+
                     # Match url to verify successful upload
                     match = re.match(r".*?filelist\.io/details\.php\?id=(\d+)&uploaded=(\d+)", up.url)
                     if match:
@@ -204,7 +204,7 @@ class FL():
             cookiefile = os.path.abspath(f"{meta['base_dir']}/data/cookies/FL.pkl")
             with open(cookiefile, 'rb') as cf:
                 session.cookies.update(pickle.load(cf))
-            
+
             search_url = f"https://filelist.io/browse.php"
             if int(meta['imdb_id'].replace('tt', '')) != 0:
                 params = {
@@ -218,7 +218,7 @@ class FL():
                     'cat' : await self.get_category_id(meta),
                     'searchin' : '0'
                 }
-            
+
             r = session.get(search_url, params=params)
             await asyncio.sleep(0.5)
             soup = BeautifulSoup(r.text, 'html.parser')
@@ -229,7 +229,7 @@ class FL():
 
         return dupes
 
-    
+
 
 
     async def validate_credentials(self, meta):
@@ -249,8 +249,8 @@ class FL():
             else:
                 return False
         return True
-    
-    
+
+
     async def validate_cookies(self, meta, cookiefile):
         url = "https://filelist.io/index.php"
         if os.path.exists(cookiefile):
@@ -268,7 +268,7 @@ class FL():
                     return False
         else:
             return False
-    
+
     async def login(self, cookiefile):
         with requests.Session() as session:
             r = session.get("https://filelist.io/login.php")
@@ -313,7 +313,7 @@ class FL():
         with open(f"{meta['base_dir']}/tmp/{meta['uuid']}/[{self.tracker}]DESCRIPTION.txt", 'w', newline='') as descfile:
             from src.bbcode import BBCODE
             bbcode = BBCODE()
-            
+
             desc = base
             desc = bbcode.remove_spoiler(desc)
             desc = bbcode.convert_code_to_quote(desc)
@@ -354,7 +354,7 @@ class FL():
                 descfile.write(self.signature)
             descfile.close()
 
-    
+
     async def get_ro_tracks(self, meta):
         has_ro_audio = has_ro_sub = False
         if meta.get('is_disc', '') != 'BDMV':

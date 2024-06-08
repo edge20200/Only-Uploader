@@ -25,11 +25,11 @@ class LCD():
         self.source_flag = 'LOCADORA'
         self.search_url = 'https://locadora.cc/api/torrents/filter'
         self.torrent_url = 'https://locadora.cc/api/torrents/'
-        self.upload_url = 'https://locadora.cc/api/torrents/upload' 
+        self.upload_url = 'https://locadora.cc/api/torrents/upload'
         self.signature = f"\n[center]Criado usando L4G's Upload Assistant[/center]"
         self.banned_groups = [""]
         pass
-    
+
     async def upload(self, meta):
         common = COMMON(config=self.config)
         await common.edit_torrent(meta, self.tracker, self.source_flag)
@@ -58,7 +58,7 @@ class LCD():
             'name' : name,
             'description' : desc,
             'mediainfo' : mi_dump,
-            'bdinfo' : bd_dump, 
+            'bdinfo' : bd_dump,
             'category_id' : cat_id,
             'type_id' : type_id,
             'resolution_id' : resolution_id,
@@ -96,14 +96,14 @@ class LCD():
         params = {
             'api_token': self.config['TRACKERS'][self.tracker]['api_key'].strip()
         }
-        
+
         if meta['debug'] == False:
             response = requests.post(url=self.upload_url, files=files, data=data, headers=headers, params=params)
             try:
                 console.print(response.json())
             except:
                 console.print("It may have uploaded, go check")
-                return 
+                return
         else:
             console.print(f"[cyan]Request Data:")
             console.print(data)
@@ -115,7 +115,7 @@ class LCD():
 
     async def get_cat_id(self, category_name, edition, meta):
         category_id = {
-            'MOVIE': '1', 
+            'MOVIE': '1',
             'TV': '2',
             'ANIMES': '6'
             }.get(category_name, '0')
@@ -125,33 +125,33 @@ class LCD():
 
     async def get_type_id(self, type):
         type_id = {
-            'DISC': '1', 
+            'DISC': '1',
             'REMUX': '2',
             'ENCODE': '3',
-            'WEBDL': '4', 
-            'WEBRIP': '5', 
+            'WEBDL': '4',
+            'WEBRIP': '5',
             'HDTV': '6'
             }.get(type, '0')
         return type_id
 
     async def get_res_id(self, resolution):
         resolution_id = {
-#            '8640p':'10', 
-            '4320p': '1', 
-            '2160p': '2', 
+#            '8640p':'10',
+            '4320p': '1',
+            '2160p': '2',
 #            '1440p' : '2',
             '1080p': '3',
-            '1080i':'34', 
-            '720p': '5',  
-            '576p': '6', 
+            '1080i':'34',
+            '720p': '5',
+            '576p': '6',
             '576i': '7',
-            '480p': '8', 
+            '480p': '8',
             '480i': '9',
             'Other': '10',
             }.get(resolution, '10')
         return resolution_id
 
-            
+
 
 
     async def search_existing(self, meta):
@@ -184,8 +184,8 @@ class LCD():
         return dupes
 
     async def edit_name(self, meta):
-       
-       
+
+
         name = meta['uuid'].replace('.mkv','').replace('.mp4','').replace(".", " ").replace("DDP2 0","DDP2.0").replace("DDP5 1","DDP5.1").replace("H 264","H.264").replace("H 265","H.264").replace("DD+7 1","DD+7.1").replace("AAC2 0","AAC2.0").replace('DD5 1','DD5.1').replace('DD2 0','DD2.0').replace('TrueHD 7 1','TrueHD 7.1').replace('DTS-HD MA 7 1','DTS-HD MA 7.1').replace('-C A A','-C.A.A')
-        
+
         return name

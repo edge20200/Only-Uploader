@@ -24,7 +24,7 @@ class HDB():
         self.rehost_images = config['TRACKERS']['HDB'].get('img_rehost', False)
         self.signature = None
         self.banned_groups = [""]
-    
+
 
     async def get_type_category_id(self, meta):
         cat_id = "EXIT"
@@ -66,7 +66,7 @@ class HDB():
         if meta.get('type', '') == "HDTV":
             medium_id = 4
             if meta.get('has_encode_settings', False) == True:
-                medium_id = 3  
+                medium_id = 3
         # 3 = Encode
         if meta.get('type', '') in ("ENCODE", "WEBRIP"):
             medium_id = 3
@@ -80,16 +80,16 @@ class HDB():
 
     async def get_res_id(self, resolution):
         resolution_id = {
-            '8640p':'10', 
-            '4320p': '1', 
-            '2160p': '2', 
+            '8640p':'10',
+            '4320p': '1',
+            '2160p': '2',
             '1440p' : '3',
             '1080p': '3',
-            '1080i':'4', 
-            '720p': '5',  
-            '576p': '6', 
+            '1080i':'4',
+            '720p': '5',
+            '576p': '6',
             '576i': '7',
-            '480p': '8', 
+            '480p': '8',
             '480i': '9'
             }.get(resolution, '10')
         return resolution_id
@@ -133,13 +133,13 @@ class HDB():
             "KINO LORBER" : 55, "KINO" : 55,
             "BFI VIDEO" : 63, "BFI" : 63, "BRITISH FILM INSTITUTE" : 63,
             "STUDIO CANAL" : 65,
-            "ARROW" : 64            
+            "ARROW" : 64
         }
         if meta.get('distributor') in distributor_dict.keys():
             tags.append(distributor_dict.get(meta['distributor']))
-        
 
-        # 4K Remaster, 
+
+        # 4K Remaster,
         if "IMAX" in meta.get('edition', ''):
             tags.append(14)
         if "OPEN MATTE" in meta.get('edition', '').upper():
@@ -155,7 +155,7 @@ class HDB():
             console.print('[yellow]zxx audio track found, suggesting you tag as silent') #57
 
         # Video Metadata
-        # HDR10, HDR10+, Dolby Vision, 10-bit, 
+        # HDR10, HDR10+, Dolby Vision, 10-bit,
         if "HDR" in meta.get('hdr', ''):
             if "HDR10+" in meta['hdr']:
                 tags.append(25) #HDR10+
@@ -195,7 +195,7 @@ class HDB():
         hdb_name = re.sub(r"[^0-9a-zA-ZÀ-ÿ. :&+'\-\[\]]+", "", hdb_name)
         hdb_name = hdb_name.replace(' .', '.').replace('..', '.')
 
-        return hdb_name 
+        return hdb_name
 
 
     ###############################################################
@@ -329,7 +329,7 @@ class HDB():
 
         return dupes
 
-    
+
 
 
     async def validate_credentials(self, meta):
@@ -342,7 +342,7 @@ class HDB():
             console.print('[red]Failed to validate cookies. Please confirm that the site is up and your passkey is valid.')
             return False
         return True
-    
+
     async def validate_api(self):
         url = "https://hdbits.org/api/test"
         data = {
@@ -356,7 +356,7 @@ class HDB():
             return False
         except:
             return False
-    
+
     async def validate_cookies(self, meta):
         common = COMMON(config=self.config)
         url = "https://hdbits.org"
@@ -439,7 +439,7 @@ class HDB():
                 descfile.write(f"{hdbimg_bbcode}")
             else:
                 images = meta['image_list']
-                if len(images) > 0: 
+                if len(images) > 0:
                     descfile.write("[center]")
                     for each in range(len(images[:int(meta['screens'])])):
                         img_url = images[each]['img_url']
@@ -450,7 +450,7 @@ class HDB():
                 descfile.write(self.signature)
             descfile.close()
 
-    
+
     async def hdbimg_upload(self, meta):
         images = glob.glob(f"{meta['base_dir']}/tmp/{meta['uuid']}/{meta['filename']}-*.png")
         url = "https://img.hdbits.org/upload_api.php"
@@ -464,9 +464,9 @@ class HDB():
         files = {}
 
         # Set maximum screenshots to 3 for tv singles and 6 for everthing else
-        hdbimg_screen_count = 3 if meta['category'] == "TV" and meta.get('tv_pack', 0) == 0 else 6 
+        hdbimg_screen_count = 3 if meta['category'] == "TV" and meta.get('tv_pack', 0) == 0 else 6
         if len(images) < hdbimg_screen_count:
-            hdbimg_screen_count = len(images) 
+            hdbimg_screen_count = len(images)
         for i in range(hdbimg_screen_count):
             files[f'images_files[{i}]'] = open(images[i], 'rb')
         r = requests.post(url=url, data=data, files=files)

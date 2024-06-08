@@ -75,7 +75,7 @@ class Bot(commands.Bot):
                 error = f'{extension}\n {type(e).__name__} : {e}'
                 print(f'failed to load extension {error}')
             print('-' * 10)
-        
+
 
     async def on_ready(self):
         """
@@ -102,8 +102,8 @@ class Bot(commands.Bot):
         await self.process_commands(message)
 
 
-    
-    
+
+
 
 
 if __name__ == '__main__':

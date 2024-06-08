@@ -29,10 +29,10 @@ class MTV():
         self.forum_link = 'https://www.morethantv.me/wiki.php?action=article&id=73'
         self.search_url = 'https://www.morethantv.me/api/torznab'
         self.banned_groups = [
-            '3LTON', 'mRS', 'CM8', 'BRrip', 'Leffe', 'aXXo', 'FRDS', 'XS', 'KiNGDOM', 'WAF', 'nHD', 
+            '3LTON', 'mRS', 'CM8', 'BRrip', 'Leffe', 'aXXo', 'FRDS', 'XS', 'KiNGDOM', 'WAF', 'nHD',
             'h65', 'CrEwSaDe', 'TM', 'ViSiON', 'x0r', 'PandaRG', 'HD2DVD', 'iPlanet', 'JIVE', 'ELiTE',
-            'nikt0', 'STUTTERSHIT', 'ION10', 'RARBG', 'FaNGDiNG0', 'YIFY', 'FUM', 'ViSION', 'NhaNc3', 
-            'nSD', 'PRODJi', 'DNL', 'DeadFish', 'HDTime', 'mHD', 'TERMiNAL', 
+            'nikt0', 'STUTTERSHIT', 'ION10', 'RARBG', 'FaNGDiNG0', 'YIFY', 'FUM', 'ViSION', 'NhaNc3',
+            'nSD', 'PRODJi', 'DNL', 'DeadFish', 'HDTime', 'mHD', 'TERMiNAL',
             '[Oj]', 'QxR', 'ZmN', 'RDN', 'mSD', 'LOAD', 'BDP', 'SANTi', 'ZKBL', ['EVO', 'WEB-DL Only']
         ]
         pass
@@ -42,7 +42,7 @@ class MTV():
         cookiefile = os.path.abspath(f"{meta['base_dir']}/data/cookies/MTV.pkl")
 
         torrent_filename = "BASE"
-        if not Torrent.read(f"{meta['base_dir']}/tmp/{meta['uuid']}/BASE.torrent").piece_size <= 8388608: 
+        if not Torrent.read(f"{meta['base_dir']}/tmp/{meta['uuid']}/BASE.torrent").piece_size <= 8388608:
             console.print("[red]Piece size is OVER 8M and does not work on MTV. Generating a new .torrent")
             from src.prep import Prep
             prep = Prep(screens=meta['screens'], img_host=meta['imghost'], config=self.config)
@@ -50,7 +50,7 @@ class MTV():
             torrent_filename = "MTV"
             # Hash to f"{meta['base_dir']}/tmp/{meta['uuid']}/[{self.tracker}]{meta['clean_name']}.torrent"
         await common.edit_torrent(meta, self.tracker, self.source_flag, torrent_filename=torrent_filename)
-   
+
         # getting category HD Episode, HD Movies, SD Season, HD Season, SD Episode, SD Movies
         cat_id = await self.get_cat_id(meta)
         # res 480 720 1080 1440 2160 4k 6k Other
@@ -72,7 +72,7 @@ class MTV():
         group_desc = await self.edit_group_desc(meta)
         #poster is optional so no longer getting it as its a pain with having to use supported image provider
         # poster = await self.get_poster(meta)
-        
+
         #edit name to match MTV standards
         mtv_name = await self.edit_name(meta)
 
@@ -189,7 +189,7 @@ class MTV():
 
     async def edit_group_desc(self, meta):
         description = ""
-        if meta['imdb_id'] not in ("0", "", None): 
+        if meta['imdb_id'] not in ("0", "", None):
             description += f"https://www.imdb.com/title/tt{meta['imdb_id']}"
         if meta['tmdb'] != 0:
             description += f"\nhttps://www.themoviedb.org/{str(meta['category'].lower())}/{str(meta['tmdb'])}"
@@ -226,7 +226,7 @@ class MTV():
         mtv_name = re.sub(r"[^0-9a-zA-ZÀ-ÿ. &+'\-\[\]]+", "", mtv_name)
         mtv_name = mtv_name.replace(' ', '.').replace('..', '.')
         return mtv_name
-    
+
 
     # Not needed as its optional
     # async def get_poster(self, meta):
@@ -351,13 +351,13 @@ class MTV():
             tags.append('hd')
         # Streaming Service
         if str(meta['service_longname']) != "":
-            tags.append(f"{meta['service_longname'].lower().replace(' ', '.')}.source") 
+            tags.append(f"{meta['service_longname'].lower().replace(' ', '.')}.source")
         # Release Type/Source
         for each in ['remux', 'WEB.DL', 'WEBRip', 'HDTV', 'BluRay', 'DVD', 'HDDVD']:
             if (each.lower().replace('.', '') in meta['type'].lower()) or (each.lower().replace('-', '') in meta['source']):
                 tags.append(each)
-            
-            
+
+
         # series tags
         if meta['category'] == "TV":
             if meta.get('tv_pack', 0) == 0:
@@ -372,14 +372,14 @@ class MTV():
                     tags.append('sd.season')
                 else:
                     tags.append('hd.season')
-        
+
         # movie tags
         if meta['category'] == 'MOVIE':
             if meta['sd'] == 1:
                 tags.append('sd.movie')
             else:
                 tags.append('hd.movie')
-        
+
 
 
         # Audio tags
@@ -509,7 +509,7 @@ class MTV():
                     mfa_code = pyotp.parse_uri(otp_uri).now()
                 else:
                     mfa_code = console.input('[yellow]MTV 2FA Code: ')
-                    
+
                 two_factor_payload = {
                     'token' : resp.text.rsplit('name="token" value="', 1)[1][:48],
                     'code' : mfa_code,

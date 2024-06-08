@@ -8,7 +8,7 @@ import os
 import platform
 
 from src.trackers.COMMON import COMMON
-from src.console import console 
+from src.console import console
 
 class STC():
     """
@@ -27,7 +27,7 @@ class STC():
         self.signature = '\n[center][url=https://skipthecommericals.xyz/]Please Seed - Upload Assistant[/url][/center]'
         self.banned_groups = [""]
         pass
-    
+
     async def upload(self, meta):
         common = COMMON(config=self.config)
         await common.edit_torrent(meta, self.tracker, self.source_flag)
@@ -53,7 +53,7 @@ class STC():
             'name' : stc_name,
             'description' : desc,
             'mediainfo' : mi_dump,
-            'bdinfo' : bd_dump, 
+            'bdinfo' : bd_dump,
             'category_id' : cat_id,
             'type_id' : type_id,
             'resolution_id' : resolution_id,
@@ -77,7 +77,7 @@ class STC():
         if self.config['TRACKERS'][self.tracker].get('internal', False) == True:
             if meta['tag'] != "" and (meta['tag'][1:] in self.config['TRACKERS'][self.tracker].get('internal_groups', [])):
                 data['internal'] = 1
-                
+
         if meta.get('category') == "TV":
             data['season_number'] = meta.get('season_int', '0')
             data['episode_number'] = meta.get('episode_int', '0')
@@ -87,16 +87,16 @@ class STC():
         params = {
             'api_token': self.config['TRACKERS'][self.tracker]['api_key'].strip()
         }
-        
+
         if meta['debug'] == False:
             response = requests.post(url=self.upload_url, files=files, data=data, headers=headers, params=params)
             try:
-        
+
                 console.print(response.json())
             except:
                 console.print("It may have uploaded, go check")
                 open_torrent.close()
-                return 
+                return
         else:
             console.print(f"[cyan]Request Data:")
             console.print(data)
@@ -110,17 +110,17 @@ class STC():
 
     async def get_cat_id(self, category_name):
         category_id = {
-            'MOVIE': '1', 
-            'TV': '2', 
+            'MOVIE': '1',
+            'TV': '2',
             }.get(category_name, '0')
         return category_id
 
     async def get_type_id(self, type, tv_pack, sd, category):
         type_id = {
-            'DISC': '1', 
+            'DISC': '1',
             'REMUX': '2',
-            'WEBDL': '4', 
-            'WEBRIP': '5', 
+            'WEBDL': '4',
+            'WEBRIP': '5',
             'HDTV': '6',
             'ENCODE': '3'
             }.get(type, '0')
@@ -146,16 +146,16 @@ class STC():
 
     async def get_res_id(self, resolution):
         resolution_id = {
-            '8640p':'10', 
-            '4320p': '1', 
-            '2160p': '2', 
+            '8640p':'10',
+            '4320p': '1',
+            '2160p': '2',
             '1440p' : '3',
             '1080p': '3',
-            '1080i':'4', 
-            '720p': '5',  
-            '576p': '6', 
+            '1080i':'4',
+            '720p': '5',
+            '576p': '6',
             '576i': '7',
-            '480p': '8', 
+            '480p': '8',
             '480i': '9'
             }.get(resolution, '10')
         return resolution_id
@@ -164,7 +164,7 @@ class STC():
 
 
 
-   
+
 
 
     async def search_existing(self, meta):
