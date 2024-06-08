@@ -1601,7 +1601,7 @@ class Prep():
 
     def get_tag(self, video, meta):
         try:
-            tag = guessit(video)['release_group']
+            tag = guessit(os.path.basename(video))['release_group']
             tag = f"-{tag}"
         except:
             tag = ""
