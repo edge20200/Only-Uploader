@@ -22,7 +22,7 @@ RUN pip3 install -r requirements.txt
 COPY . .
 
 # Set shell command alias
-RUN echo 'alias l4g="/UploadAssistant/upload.py"' >> /root/.bashrc
+RUN echo 'alias l4g="/Only-Uploader/upload.py"' >> /root/.bashrc
 
 # Start container and tail to keep container running
 CMD ["/bin/bash", "-c", "tail -f /dev/null"]
