@@ -31,7 +31,7 @@ class FNP():
         self.source_flag = 'FnP'
         self.upload_url = 'https://fearnopeer.com/api/torrents/upload'
         self.search_url = 'https://fearnopeer.com/api/torrents/filter'
-        self.signature = f"\n[center][url=https://github.com/edge20200/UploadAssistant]Created by Upload Assistant[/url][/center]"
+        self.signature = f"\n[center][url=https://github.com/edge20200/Only-Uploader]Powered by Only-Uploader[/url][/center]"
         self.banned_groups = [""]
         pass
 
