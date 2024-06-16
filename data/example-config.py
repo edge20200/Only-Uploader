@@ -8,7 +8,7 @@ config = {
 
         "tmdb_api" : "tmdb_api key",
         "imgbb_api" : "imgbb api key",
-        "oeimg_api" : "oeimg api key",
+        "oeimg_api" : "OnlyImg api key",
         "ptpimg_api" : "ptpimg api key",
         "lensdump_api" : "lensdump api key",
 
@@ -36,7 +36,7 @@ config = {
 
     "TRACKERS" : {
         # Which trackers do you want to upload to?
-        "default_trackers" : "BLU, BHD, AITHER, STC, STT, SN, THR, R4E, HP, ACM, PTP, LCD, LST, PTER, NBL, ANT, MTV, CBR, RTF, HUNO, BHDTV, LT, PTER, TL, TDC, HDT, OE, RF, OTW, FNP, UTP",
+        "default_trackers" : "BLU, BHD, AITHER, STC, SN, THR, R4E, HP, ACM, PTP, LCD, LST, PTER, NBL, ANT, MTV, CBR, RTF, HUNO, BHDTV, LT, PTER, TL, TDC, HDT, OE, RF, OTW, FNP, UTP",
 
         "BLU" : {
             "useAPI" : False, # Set to True if using BLU
@@ -92,11 +92,6 @@ config = {
         "STC" :{
             "api_key" : "STC API Key",
             "announce_url" : "https://skipthecommericals.xyz/announce/customannounceurl",
-            # "anon" : False
-        },
-        "STT" :{
-            "api_key" : "STC API Key",
-            "announce_url" : "https://stt.xyz/announce/customannounceurl",
             # "anon" : False
         },
         "SN": {
