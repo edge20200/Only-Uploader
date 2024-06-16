@@ -24,7 +24,7 @@ class STC():
         self.source_flag = 'STC'
         self.upload_url = 'https://skipthecommericals.xyz/api/torrents/upload'
         self.search_url = 'https://skipthecommericals.xyz/api/torrents/filter'
-        self.signature = '\n[center][url=https://skipthecommericals.xyz/]Please Seed - Upload Assistant[/url][/center]'
+        self.signature = '\n[center][url=https://skipthecommericals.xyz/]Powered by Only-Uploader[/url][/center]'
         self.banned_groups = [""]
         pass
 
