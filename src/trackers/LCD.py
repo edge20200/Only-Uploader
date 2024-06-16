@@ -26,7 +26,7 @@ class LCD():
         self.search_url = 'https://locadora.cc/api/torrents/filter'
         self.torrent_url = 'https://locadora.cc/api/torrents/'
         self.upload_url = 'https://locadora.cc/api/torrents/upload'
-        self.signature = f"\n[center]Criado usando L4G's Upload Assistant[/center]"
+        self.signature = f"\n[center]Powered by Only-Uploader[/center]"
         self.banned_groups = [""]
         pass
 
