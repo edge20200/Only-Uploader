@@ -32,7 +32,7 @@ class LST():
         self.upload_url = 'https://lst.gg/api/torrents/upload'
         self.search_url = 'https://lst.gg/api/torrents/filter'
         self.signature = f"\n[center]Powered by Only-Uploader[/center]"
-        self.banned_groups = [""]
+        self.banned_groups = ['aXXo', 'BRrip', 'CM8', 'CrEwSaDe', 'CTFOH', 'DNL', 'FaNGDiNG0', 'HD2DVD', 'HDTime', 'ION10', 'iPlanet', 'KiNGDOM', 'mHD', 'mSD', 'nHD', 'nikt0', 'nSD', 'NhaNc3', 'OFT', 'PRODJi', 'SANTi', 'STUTTERSHIT', 'ViSION', 'VXT', 'WAF', 'x0r', 'YIFY', 'Sicario', 'RARBG', 'MeGusta', 'TSP', 'TSPxL', 'GalaxyTV', 'TGALAXY', 'TORRENTGALAXY']
         pass
 
     async def get_cat_id(self, category_name, keywords, service):
