@@ -2309,20 +2309,21 @@ class Prep():
                     elif img_host == "oeimg":
                         url = "https://imgoe.download/api/1/upload"
                         data = {
+                            'key': self.config['DEFAULT']['oeimg_api'],
                             'image': base64.b64encode(open(image, "rb").read()).decode('utf8')
                         }
-                        headers = {
-                            'X-API-Key': self.config['DEFAULT']['oeimg_api'],
-                        }
-                        response = requests.post(url, data=data, headers=headers, timeout=timeout)
-                        response = response.json()
-                        if response.get('status_code') != 200:
-                            console.print("[yellow]OnlyImage failed, trying next image host")
-                            img_host_num += 1
-                            return self.upload_screens(meta, screens - i, img_host_num, i, total_screens, custom_img_list, return_dict, retry_mode=True)
-                        img_url = response['data'].get('medium', response['data']['image'])['url']
-                        raw_url = img_url
-                        web_url = img_url
+                        try:
+                            response = requests.post(url, data = data,timeout=timeout)
+                            response = response.json()
+                            if response.get('status_code') != 200:
+                                progress.console.print(response)
+                            img_url = response['data'].get('medium', response['data']['image'])['url']
+                            web_url = response['data']['url_viewer']
+                            raw_url = response['data']['image']['url']
+                        except Exception:
+                            progress.console.print("[yellow]oeimg failed, trying next image host")
+                            progress.stop()
+                            newhost_list, i = self.upload_screens(meta, screens - i , img_host_num + 1, i, total_screens, [], return_dict)
                     elif img_host == "pixhost":
                         url = "https://api.pixhost.to/images"
                         data = {
