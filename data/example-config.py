@@ -7,18 +7,20 @@ config = {
         # -----------------------
 
         "tmdb_api" : "tmdb_api key",
-        "imgbb_api" : "imgbb api key",
         "oeimg_api" : "OnlyImg api key",
+        "imgbb_api" : "imgbb api key",
+        "ptscreens_api" : "ptscreens api key",
         "ptpimg_api" : "ptpimg api key",
         "lensdump_api" : "lensdump api key",
 
         # Order of image hosts, and backup image hosts
-        "img_host_1": "imgbb",
-        "img_host_2": "ptpimg",
-        "img_host_3": "imgbox",
-	"img_host_4": "pixhost",
-        "img_host_5": "lensdump",
-	"img_host_6": "oeimg",
+        "img_host_1": "oeimg",
+        "img_host_2": "imgbb",
+        "img_host_3": "ptpimg",
+        "img_host_4": "imgbox",
+	    "img_host_5": "pixhost",
+        "img_host_6": "lensdump",
+        "img_host_7": "ptscreens",
 
 
         "screens" : "6",
@@ -36,7 +38,9 @@ config = {
 
     "TRACKERS" : {
         # Which trackers do you want to upload to?
-        "default_trackers" : "BLU, BHD, AITHER, STC, SN, THR, R4E, HP, ACM, PTP, LCD, LST, PTER, NBL, ANT, MTV, CBR, RTF, HUNO, BHDTV, LT, PTER, TL, TDC, HDT, OE, RF, OTW, FNP, UTP",
+        # Available tracker: BLU, BHD, AITHER, STC, SN, THR, R4E, HP, ACM, PTP, LCD, LST, PTER, NBL, ANT, MTV, CBR, RTF, HUNO, BHDTV, LT, PTER, TL, HDT, OE, RF, OTW, FNP, UTP, AL
+        # Remove the ones not used to save being asked everytime
+        "default_trackers" : "BLU, BHD, AITHER, STC, SN, THR, R4E, HP, ACM, PTP, LCD, LST, PTER, NBL, ANT, MTV, CBR, RTF, HUNO, BHDTV, LT, PTER, TL, HDT, OE, RF, OTW, FNP, UTP, AL",
 
         "BLU" : {
             "useAPI" : False, # Set to True if using BLU
@@ -136,7 +140,7 @@ config = {
             "announce_url" : "https://locadora.cc/announce/customannounceurl",
             # "anon" : False
         },
-	"CBR" : {
+	    "CBR" : {
             "api_key" : "CBR api key",
             "announce_url" : "https://capybarabr.com/announce/customannounceurl",
             # "anon" : False
@@ -172,12 +176,12 @@ config = {
         "OE" : {
             "api_key" : "OE api key",
             "announce_url" : "https://onlyencodes.cc/announce/customannounceurl",
-		#"internal" : True,
-		#"internal_groups" " ["group1"],
+		    #"internal" : True,
+		    #"internal_groups" " ["group1"],
             # "anon" : False
         },
         "RTF": {
-	    "username" : "username",
+	        "username" : "username",
             "password" : "password",
             "api_key": 'get_it_by_running_/api/ login command from https://retroflix.club/api/doc',
             "announce_url": "get from upload page",
@@ -199,9 +203,19 @@ config = {
             "announce_url" : "https://fearnopeer.com/announce/customannounceurl",
             # "anon" : "False"
         },
+        "ULCX" : {
+            "api_key" : "ULXC api key",
+            "announce_url" : "https://upload.cx/announce/customannounceurl",
+            # "anon" : False
+        },
         "UTP" : {
             "api_key" : "UTP api key",
             "announce_url" : "https://UTP/announce/customannounceurl",
+            # "anon" : False
+        },
+        "AL" : {
+            "api_key" : "AL api key",
+            "announce_url" : "https://animelovers.club/announce/customannounceurl",
             # "anon" : False
         },
         "MANUAL" : {
@@ -210,15 +224,22 @@ config = {
         },
     },
 
+    # enable_search to true will automatically try and find a suitable hash to save having to rehash when creating torrents
+    # Should use the qbit API, but will also use the torrent_storage_dir to find suitable hashes
+    # If you find issue, use the "--debug" command option to print out some related details
 
     "TORRENT_CLIENTS" : {
-        # Name your torrent clients here, for example, this example is named "Client1"
+        # Name your torrent clients here, for example, this example is named "Client1" and is set as default_torrent_client above
+        # All options relate to the webui, make sure you have the webui secured if it has WAN access
+        # See https://github.com/edge20200/Only-Uploader/wiki
         "Client1" : {
             "torrent_client" : "qbit",
+            # "enable_search" : True,
             "qbit_url" : "http://127.0.0.1",
             "qbit_port" : "8080",
             "qbit_user" : "username",
             "qbit_pass" : "password",
+            # "torrent_storage_dir" : "path/to/BT_backup folder"
 
             # Remote path mapping (docker/etc.) CASE SENSITIVE
             # "local_path" : "/LocalPath",
@@ -242,9 +263,6 @@ config = {
                 # If using remote path mapping, use remote path
                 # For using multiple paths, use a list ["path1", "path2"]
             # "automatic_management_paths" : ""
-
-
-
             # Remote path mapping (docker/etc.) CASE SENSITIVE
             # "local_path" : "E:\\downloads\\tv",
             # "remote_path" : "/remote/downloads/tv"
@@ -282,12 +300,6 @@ config = {
         },
 
     },
-
-
-
-
-
-
 
     "DISCORD" :{
         "discord_bot_token" : "discord bot token",

@@ -38,6 +38,7 @@ from src.trackers.FNP import FNP
 from src.trackers.CBR import CBR
 from src.trackers.UTP import UTP
 from src.trackers.ULCX import ULCX
+from src.trackers.AL import AL
 import json
 from pathlib import Path
 import asyncio
@@ -208,11 +209,11 @@ async def do_the_thing(base_dir):
                 if reuse_torrent != None:
                     prep.create_base_from_existing_torrent(reuse_torrent, meta['base_dir'], meta['uuid'])
             if meta['nohash'] == False and reuse_torrent == None:
-                prep.create_torrent(meta, Path(meta['path']), "BASE", meta.get('piece_size_max', 0))
+                prep.create_torrent(meta, Path(meta['path']), "BASE")
             if meta['nohash']:
                 meta['client'] = "none"
         elif os.path.exists(os.path.abspath(f"{meta['base_dir']}/tmp/{meta['uuid']}/BASE.torrent")) and meta.get('rehash', False) == True and meta['nohash'] == False:
-            prep.create_torrent(meta, Path(meta['path']), "BASE", meta.get('piece_size_max', 0))
+            prep.create_torrent(meta, Path(meta['path']), "BASE")
         if int(meta.get('randomized', 0)) >= 1:
             prep.create_random_torrents(meta['base_dir'], meta['uuid'], meta['randomized'], meta['path'])
 
@@ -251,13 +252,13 @@ async def do_the_thing(base_dir):
         #######  Upload to Trackers  #######
         ####################################
         common = COMMON(config=config)
-        api_trackers = ['BLU', 'AITHER', 'STC', 'R4E', 'RF', 'ACM','LCD','LST','HUNO', 'SN', 'LT', 'NBL', 'ANT', 'JPTV', 'OE', 'BHDTV', 'RTF', 'OTW', 'FNP', 'CBR', 'UTP', 'ULCX']
+        api_trackers = ['BLU', 'AITHER', 'STC', 'R4E', 'RF', 'ACM','LCD','LST','HUNO', 'SN', 'LT', 'NBL', 'ANT', 'JPTV', 'OE', 'BHDTV', 'RTF', 'OTW', 'FNP', 'CBR', 'UTP', 'ULCX', 'AL']
         http_trackers = ['HDB', 'TTG', 'FL', 'PTER', 'HDT', 'MTV']
         tracker_class_map = {
             'BLU' : BLU, 'BHD': BHD, 'AITHER' : AITHER, 'STC' : STC, 'R4E' : R4E, 'THR' : THR, 'HP' : HP, 'PTP' : PTP, 'RF' : RF, 
             'SN' : SN, 'ACM' : ACM, 'HDB' : HDB, 'LCD': LCD, 'TTG' : TTG, 'LST' : LST, 'HUNO': HUNO, 'FL' : FL, 'LT' : LT, 'NBL' : NBL, 
             'ANT' : ANT, 'PTER': PTER, 'JPTV' : JPTV, 'TL' : TL, 'HDT' : HDT, 'MTV': MTV, 'OE': OE, 'BHDTV': BHDTV, 'RTF': RTF, 
-            'OTW': OTW, 'FNP': FNP, 'CBR': CBR, 'UTP': UTP, 'ULCX': ULCX}
+            'OTW': OTW, 'FNP': FNP, 'CBR': CBR, 'UTP': UTP, 'ULCX': ULCX, 'AL':AL}
 
         for tracker in trackers:
             if meta['name'].endswith('DUPE?'):
@@ -469,7 +470,22 @@ def get_confirmation(meta):
     if meta.get('unattended', False) == False:
         get_missing(meta)
         ring_the_bell = "\a" if config['DEFAULT'].get("sfx_on_prompt", True) == True else "" # \a rings the bell
-        cli_ui.info_section(cli_ui.yellow, f"Is this correct?{ring_the_bell}")
+        cli_ui.info(ring_the_bell)
+        
+        # Handle the 'keep_folder' logic based on 'is disc' and 'isdir'
+        if meta.get('is disc', False):
+            meta['keep_folder'] = False  # Ensure 'keep_folder' is False if 'is disc' is True
+
+        if meta['isdir']:
+            if 'keep_folder' in meta:
+                if meta['keep_folder']:
+                    cli_ui.info_section(cli_ui.yellow, f"Uploading with --keep-folder")
+                    kf_confirm = cli_ui.ask_yes_no("You specified --keep-folder. Uploading in folders might not be allowed. Are you sure you want to proceed?", default=False)
+                    if not kf_confirm:
+                        cli_ui.info('Aborting...')
+                        exit()
+            
+        cli_ui.info_section(cli_ui.yellow, f"Is this correct?")
         cli_ui.info(f"Name: {meta['name']}")
         confirm = cli_ui.ask_yes_no("Correct?", default=False)
     else:
@@ -486,7 +502,7 @@ def dupe_check(dupes, meta):
         console.print()
         dupe_text = "\n".join(dupes)
         console.print()
-        cli_ui.info_section(cli_ui.bold, "Are these dupes?")
+        cli_ui.info_section(cli_ui.bold, "Check if these are actually dupes!")
         cli_ui.info(dupe_text)
         if meta['unattended']:
             if meta.get('dupe', False) == False:
@@ -575,4 +591,3 @@ if __name__ == '__main__':
             loop.run_until_complete(do_the_thing(base_dir))
         else:
             asyncio.run(do_the_thing(base_dir))
-

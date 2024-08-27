@@ -6,10 +6,11 @@ import requests
 import platform
 from str2bool import str2bool
 from pymediainfo import MediaInfo
-
+import math
+from torf import Torrent
+from pathlib import Path
 from src.trackers.COMMON import COMMON
 from src.console import console
-
 
 class ANT():
     """
@@ -32,9 +33,13 @@ class ANT():
         self.source_flag = 'ANT'
         self.search_url = 'https://anthelion.me/api.php'
         self.upload_url = 'https://anthelion.me/api.php'
-        self.banned_groups = ['Ozlem', 'RARBG', 'FGT', 'STUTTERSHIT', 'LiGaS', 'DDR', 'Zeus', 'TBS', 'aXXo', 'CrEwSaDe', 'DNL', 'EVO',
-                              'FaNGDiNG0', 'HD2DVD', 'HDTime', 'iPlanet', 'KiNGDOM', 'NhaNc3', 'PRoDJi', 'SANTi', 'ViSiON', 'WAF', 'YIFY',
-                              'YTS', 'MkvCage', 'mSD']
+        self.banned_groups = ['3LTON', '4yEo', 'ADE', 'AFG', 'AniHLS', 'AnimeRG', 'AniURL', 'AROMA', 'aXXo', 'Brrip', 'CHD', 'CM8', 
+                            'CrEwSaDe', 'd3g', 'DDR', 'DNL', 'DeadFish', 'ELiTE', 'eSc', 'FaNGDiNG0', 'FGT', 'Flights', 'FRDS', 
+                            'FUM', 'HAiKU', 'HD2DVD', 'HDS', 'HDTime', 'Hi10', 'ION10', 'iPlanet', 'JIVE', 'KiNGDOM', 'Leffe', 
+                            'LiGaS', 'LOAD', 'MeGusta', 'MkvCage', 'mHD', 'mSD', 'NhaNc3', 'nHD', 'NOIVTC', 'nSD', 'Oj', 'Ozlem', 
+                            'PiRaTeS', 'PRoDJi', 'RAPiDCOWS', 'RARBG', 'RetroPeeps', 'RDN', 'REsuRRecTioN', 'RMTeam', 'SANTi', 
+                            'SicFoI', 'SPASM', 'SPDVD', 'STUTTERSHIT', 'TBS', 'Telly', 'TM', 'UPiNSMOKE', 'URANiME', 'WAF', 'xRed', 
+                            'XS', 'YIFY', 'YTS', 'Zeus', 'ZKBL', 'ZmN', 'ZMNT']
         self.signature = None
         pass
 
@@ -66,7 +71,32 @@ class ANT():
 
     async def upload(self, meta):
         common = COMMON(config=self.config)
-        await common.edit_torrent(meta, self.tracker, self.source_flag)
+        torrent_filename = "BASE"
+        torrent = Torrent.read(f"{meta['base_dir']}/tmp/{meta['uuid']}/BASE.torrent")
+        total_size = sum(file.size for file in torrent.files)
+
+        # Calculate the number of pieces and the torrent file size based on the current piece size
+        def calculate_pieces_and_file_size(total_size, piece_size):
+            num_pieces = math.ceil(total_size / piece_size)
+            torrent_file_size = 20 + (num_pieces * 20)  # Approximate size: 20 bytes header + 20 bytes per piece
+            return num_pieces, torrent_file_size
+
+        # Check if the existing torrent fits within the constraints
+        num_pieces, torrent_file_size = calculate_pieces_and_file_size(total_size, torrent.piece_size)
+
+        # If the torrent doesn't meet the constraints, regenerate it
+        if not (1000 <= num_pieces <= 2000) or torrent_file_size > 102400:
+            console.print("[yellow]Regenerating torrent to fit within 1000-2000 pieces and 100 KiB .torrent size limit needed for ANT.")
+            from src.prep import Prep
+            prep = Prep(screens=meta['screens'], img_host=meta['imghost'], config=self.config)
+            
+            # Call create_torrent with the default piece size calculation
+            prep.create_torrent(meta, Path(meta['path']), "ANT")
+            torrent_filename = "ANT"
+        else:
+            console.print("[green]Existing torrent meets the constraints.")
+
+        await common.edit_torrent(meta, self.tracker, self.source_flag, torrent_filename=torrent_filename)
         flags = await self.get_flags(meta)
         if meta['anon'] == 0 and bool(str2bool(str(self.config['TRACKERS'][self.tracker].get('anon', "False")))) is False:
             anon = 0
@@ -77,7 +107,8 @@ class ANT():
             bd_dump = open(f"{meta['base_dir']}/tmp/{meta['uuid']}/BD_SUMMARY_00.txt", 'r', encoding='utf-8').read()
             bd_dump = f'[spoiler=BDInfo][pre]{bd_dump}[/pre][/spoiler]'
             path = os.path.join(meta['bdinfo']['path'], 'STREAM')
-            m2ts = os.path.join(path, meta['bdinfo']['files'][0]['file'])
+            file_name = meta['bdinfo']['files'][0]['file'].lower()
+            m2ts = os.path.join(path, file_name)
             media_info_output = str(MediaInfo.parse(m2ts, output="text", full=False))
             mi_dump = media_info_output.replace('\r\n', '\n')
         else:
@@ -105,19 +136,23 @@ class ANT():
         headers = {
             'User-Agent': f'Upload Assistant/2.1 ({platform.system()} {platform.release()})'
         }
-        if meta['debug'] is False:
-            response = requests.post(url=self.upload_url, files=files, data=data, headers=headers)
-            if response.status_code in [200, 201]:
-                response = response.json()
-            try:
-                console.print(response)
-            except Exception:
-                console.print("It may have uploaded, go check")
-                return
-        else:
-            console.print("[cyan]Request Data:")
-            console.print(data)
-        open_torrent.close()
+        
+        try:
+            if not meta['debug']:
+                response = requests.post(url=self.upload_url, files=files, data=data, headers=headers)
+                if response.status_code in [200, 201]:
+                    response_data = response.json()
+                else:
+                    response_data = {
+                        "error": f"Unexpected status code: {response.status_code}",
+                        "response_content": response.text  # or use response.json() if JSON is expected
+                    }
+                console.print(response_data)
+            else:
+                console.print("[cyan]Request Data:")
+                console.print(data)
+        finally:
+            open_torrent.close()
 
     async def edit_desc(self, meta):
         return

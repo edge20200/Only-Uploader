@@ -17,17 +17,26 @@ A simple tool to take the work out of uploading.
   - Can re-use existing torrents instead of hashing new
   - Generates proper name for your upload using Mediainfo/BDInfo and TMDb/IMDb conforming to site rules
   - Checks for existing releases already on site
-  - Uploads to PTP/BLU/BHD/Aither/THR/STC/R4E(limited)/HP/ACM/LCD/LST/NBL/ANT/FL/HUNO/RF/SN/OE/OTW
+  - Uploads to OE/PTP/BLU/BHD/Aither/THR/STC/R4E(limited)/HP/ACM/LCD/LST/NBL/ANT/FL/HUNO/RF/SN/RTF/OTW/FNP/CBR/UTP/AL/ULCX
   - Adds to your client with fast resume, seeding instantly (rtorrent/qbittorrent/deluge/watch folder)
   - ALL WITH MINIMAL INPUT!
   - Currently works with .mkv/.mp4/Blu-ray/DVD/HD-DVDs
+
+  ## Image Hosts:
+  - OnlyImage - oeimg
+  - ImgBB - imgbb
+  - PTPimg - ptpimg
+  - ImageBox - imgbox
+  - PixHost - pixhost
+  - LensDump - lensdump
+  - PTScreens - ptscreens
 
 ## Coming Soon:
   - Features
   
 
 ## **Setup:**
-   - **REQUIRES AT LEAST PYTHON 3.7 AND PIP3**
+   - **REQUIRES AT LEAST PYTHON 3.12 AND PIP3**
    - Needs [mono](https://www.mono-project.com/) on linux systems for BDInfo
    - Also needs MediaInfo and ffmpeg installed on your system
       - On Windows systems, ffmpeg must be added to PATH (https://windowsloop.com/install-ffmpeg-windows-10/)

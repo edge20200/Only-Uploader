@@ -13,14 +13,12 @@ import multiprocessing
 import platform
 import pickle
 from pymediainfo import MediaInfo
-
-
 from src.trackers.COMMON import COMMON
 from src.bbcode import BBCODE
 from src.exceptions import *
 from src.console import console
-
-
+from torf import Torrent
+import datetime
 
 class PTP():
 
@@ -30,13 +28,15 @@ class PTP():
         self.source_flag = 'PTP'
         self.api_user = config['TRACKERS']['PTP'].get('ApiUser', '').strip()
         self.api_key = config['TRACKERS']['PTP'].get('ApiKey', '').strip()
-        self.announce_url = config['TRACKERS']['PTP'].get('announce_url', '').strip()
-        self.username = config['TRACKERS']['PTP'].get('username', '').strip()
+        self.announce_url = config['TRACKERS']['PTP'].get('announce_url', '').strip() 
+        self.username = config['TRACKERS']['PTP'].get('username', '').strip() 
         self.password = config['TRACKERS']['PTP'].get('password', '').strip()
         self.web_source = str2bool(str(config['TRACKERS']['PTP'].get('add_web_source_to_desc', True)))
         self.user_agent = f'Upload Assistant/2.1 ({platform.system()} {platform.release()})'
-        self.banned_groups = ['aXXo', 'BRrip', 'CM8', 'CrEwSaDe', 'CTFOH', 'DNL', 'FaNGDiNG0', 'HD2DVD', 'HDTime', 'ION10', 'iPlanet', 'KiNGDOM', 'mHD', 'mSD', 'nHD', 'nikt0', 'nSD', 'NhaNc3', 'OFT', 'PRODJi', 'SANTi', 'STUTTERSHIT', 'ViSION', 'VXT', 'WAF', 'd3g', 'x0r', 'YIFY', 'BMDru']
-
+        self.banned_groups = ['aXXo',  'BMDru', 'BRrip', 'CM8', 'CrEwSaDe', 'CTFOH', 'd3g', 'DNL', 'FaNGDiNG0', 'HD2DVD', 'HDTime', 'ION10', 'iPlanet',
+                              'KiNGDOM', 'mHD', 'mSD', 'nHD', 'nikt0', 'nSD', 'NhaNc3', 'OFT', 'PRODJi', 'SANTi', 'SPiRiT', 'STUTTERSHIT', 'ViSION', 'VXT',
+                              'WAF', 'x0r', 'YIFY',]
+    
         self.sub_lang_map = {
             ("Arabic", "ara", "ar") : 22,
             ("Brazilian Portuguese", "Brazilian", "Portuguese-BR", 'pt-br') : 49,
@@ -80,9 +80,6 @@ class PTP():
             ("Ukrainian", "ukr", "uk") : 34,
             ("Vietnamese", "vie", "vi") : 25,
         }
-
-
-
 
     async def get_ptp_id_imdb(self, search_term, search_file_folder):
         imdb_id = ptp_torrent_id = None
@@ -136,7 +133,7 @@ class PTP():
             pass
         console.print(f'[yellow]Could not find any release matching [bold yellow]{filename}[/bold yellow] on PTP')
         return None, None, None
-
+    
     async def get_imdb_from_torrent_id(self, ptp_torrent_id):
         params = {
             'torrentid' : ptp_torrent_id
@@ -167,7 +164,7 @@ class PTP():
                 return None, None
         except Exception:
             return None, None
-
+    
     async def get_ptp_description(self, ptp_torrent_id, is_disc):
         params = {
             'id' : ptp_torrent_id,
@@ -186,9 +183,7 @@ class PTP():
         desc = bbcode.clean_ptp_description(ptp_desc, is_disc)
         console.print(f"[bold green]Successfully grabbed description from PTP")
         return desc
-
-
-
+    
     async def get_group_by_imdb(self, imdb):
         params = {
             'imdb' : imdb,
@@ -214,7 +209,6 @@ class PTP():
             console.print("[red]An error has occured trying to find a group ID")
             console.print("[red]Please check that the site is online and your ApiUser/ApiKey values are correct")
             return None
-
 
     async def get_torrent_info(self, imdb, meta):
         params = {
@@ -278,7 +272,7 @@ class PTP():
             quality = "High Definition"
         elif meta['resolution'] in ["2160p", "4320p", "8640p"]:
             quality = "Ultra High Definition"
-
+        
 
         params = {
             'id' : groupID,
@@ -303,7 +297,6 @@ class PTP():
             console.print("[red]An error has occured trying to find existing releases")
         return existing
 
-
     async def ptpimg_url_rehost(self, image_url):
         payload = {
             'format' : 'json',
@@ -324,7 +317,6 @@ class PTP():
             img_url = image_url
             # img_url = ptpimg_upload(image_url, ptpimg_api)
         return img_url
-
 
     def get_type(self, imdb_info, meta):
         ptpType = None
@@ -417,7 +409,6 @@ class PTP():
             container = containermap.get(ext, 'Other')
         return container
 
-
     def get_source(self, source):
         sources = {
             "Blu-ray" : "Blu-ray",
@@ -432,7 +423,6 @@ class PTP():
         }
         source_id = sources.get(source, "OtherR")
         return source_id
-
 
     def get_subtitles(self, meta):
         sub_lang_map = self.sub_lang_map
@@ -458,7 +448,7 @@ class PTP():
                 for lang, subID in sub_lang_map.items():
                     if language in lang and subID not in sub_langs:
                         sub_langs.append(subID)
-
+        
         if sub_langs == []:
             sub_langs = [44] # No Subtitle
         return sub_langs
@@ -489,7 +479,7 @@ class PTP():
                     else:
                         sub_langs.append(v)
                         trumpable.append(4)
-
+        
         sub_langs = list(set(sub_langs))
         trumpable = list(set(trumpable))
         if trumpable == []:
@@ -506,7 +496,7 @@ class PTP():
             remaster_title.append('The Criterion Collection')
         elif meta.get('distributor') in ('MASTERS OF CINEMA', 'MOC'):
             remaster_title.append('Masters of Cinema')
-
+        
         # Editions
         # Director's Cut, Extended Edition, Rifftrax, Theatrical Cut, Uncut, Unrated
         if "director's cut" in meta.get('edition', '').lower():
@@ -527,7 +517,7 @@ class PTP():
 
         # Features
         # 2-Disc Set, 2in1, 2D/3D Edition, 3D Anaglyph, 3D Full SBS, 3D Half OU, 3D Half SBS,
-        # 4K Restoration, 4K Remaster,
+        # 4K Restoration, 4K Remaster, 
         # Extras, Remux,
         if meta.get('type') == "REMUX":
             remaster_title.append("Remux")
@@ -544,8 +534,7 @@ class PTP():
         if meta.get('has_commentary', False) == True:
             remaster_title.append('With Commentary')
 
-
-        # HDR10, HDR10+, Dolby Vision, 10-bit,
+        # HDR10, HDR10+, Dolby Vision, 10-bit, 
         # if "Hi10P" in meta.get('video_encode', ''):
         #     remaster_title.append('10-bit')
         if meta.get('hdr', '').strip() == '' and meta.get('bit_depth') == '10':
@@ -604,7 +593,7 @@ class PTP():
                             while ds.is_alive() == True:
                                 await asyncio.sleep(1)
                             new_screens = glob.glob1(f"{meta['base_dir']}/tmp/{meta['uuid']}",f"FILE_{i}-*.png")
-                            images, dummy = prep.upload_screens(meta, 2, 1, 0, 2, new_screens, {})
+                            images, dummy = prep.upload_screens(meta, 2, 1, 0, 2, new_screens, {})   
 
                     if each['type'] == "DVD":
                         desc.write(f"[b][size=3]{each['name']}:[/size][/b]\n")
@@ -622,9 +611,9 @@ class PTP():
                             while ds.is_alive() == True:
                                 await asyncio.sleep(1)
                             new_screens = glob.glob1(f"{meta['base_dir']}/tmp/{meta['uuid']}", f"{meta['discs'][i]['name']}-*.png")
-                            images, dummy = prep.upload_screens(meta, 2, 1, 0, 2, new_screens, {})
-
-                    if len(images) > 0:
+                            images, dummy = prep.upload_screens(meta, 2, 1, 0, 2, new_screens, {})  
+                        
+                    if len(images) > 0: 
                         for each in range(len(images[:int(meta['screens'])])):
                             raw_url = images[each]['raw_url']
                             desc.write(f"[img]{raw_url}[/img]\n")
@@ -658,14 +647,12 @@ class PTP():
                         base2ptp = self.convert_bbcode(base)
                         if base2ptp.strip() != "":
                             desc.write(base2ptp)
-                            desc.write("\n\n")
-                    if len(images) > 0:
+                            desc.write("\n\n")    
+                    if len(images) > 0: 
                         for each in range(len(images[:int(meta['screens'])])):
                             raw_url = images[each]['raw_url']
                             desc.write(f"[img]{raw_url}[/img]\n")
                     desc.write("\n")
-
-
 
     async def get_AntiCsrfToken(self, meta):
         if not os.path.exists(f"{meta['base_dir']}/data/cookies"):
@@ -764,7 +751,6 @@ class PTP():
         else:
             data["imdb"] = meta["imdb_id"]
 
-
         if groupID == None: # If need to make new group
             url = "https://passthepopcorn.me/upload.php"
             if data["imdb"] == "0":
@@ -806,14 +792,58 @@ class PTP():
         return url, data
 
     async def upload(self, meta, url, data):
-        with open(f"{meta['base_dir']}/tmp/{meta['uuid']}/[{self.tracker}]{meta['clean_name']}.torrent", 'rb') as torrentFile:
+        torrent_filename = f"[{self.tracker}]{meta['clean_name']}.torrent"
+        torrent_path = f"{meta['base_dir']}/tmp/{meta['uuid']}/{torrent_filename}"
+        torrent = Torrent.read(torrent_path)
+
+        # Check if the piece size exceeds 16 MiB and regenerate the torrent if needed
+        if torrent.piece_size > 16777216:  # 16 MiB in bytes
+            console.print("[red]Piece size is OVER 16M and does not work on PTP. Generating a new .torrent")
+
+            # Import Prep and regenerate the torrent with 16 MiB piece size limit
+            from src.prep import Prep
+            prep = Prep(screens=meta['screens'], img_host=meta['imghost'], config=self.config)
+
+            if meta['is_disc']:
+                include = []
+                exclude = []
+            else:
+                include = ["*.mkv", "*.mp4", "*.ts"]
+                exclude = ["*.*", "*sample.mkv", "!sample*.*"]
+
+            # Create a new torrent with piece size explicitly set to 8 MiB
+            from src.prep import Prep
+            prep = Prep(screens=meta['screens'], img_host=meta['imghost'], config=self.config)
+            new_torrent = prep.CustomTorrent(
+                path=Path(meta['path']),
+                trackers=["https://fake.tracker"],
+                source="L4G",
+                private=True,
+                exclude_globs=exclude,  # Ensure this is always a list
+                include_globs=include,  # Ensure this is always a list
+                creation_date=datetime.now(),
+                comment="Created by L4G's Upload Assistant",
+                created_by="L4G's Upload Assistant"
+            )
+            
+            # Explicitly set the piece size and update metainfo
+            new_torrent.piece_size = 16777216  # 16 MiB in bytes
+            new_torrent.metainfo['info']['piece length'] = 16777216  # Ensure 'piece length' is set
+
+            # Validate and write the new torrent
+            new_torrent.validate_piece_size()
+            new_torrent.generate(callback=prep.torf_cb, interval=5)
+            new_torrent.write(torrent_path, overwrite=True)
+
+        # Proceed with the upload process
+        with open(torrent_path, 'rb') as torrentFile:
             files = {
-                "file_input" : ("placeholder.torrent", torrentFile, "application/x-bittorent")
+                "file_input": ("placeholder.torrent", torrentFile, "application/x-bittorent")
             }
             headers = {
                 # 'ApiUser' : self.api_user,
                 # 'ApiKey' : self.api_key,
-                 "User-Agent": self.user_agent
+                "User-Agent": self.user_agent
             }
             if meta['debug']:
                 console.log(url)
@@ -826,10 +856,9 @@ class PTP():
                     response = session.post(url=url, data=data, headers=headers, files=files)
                 console.print(f"[cyan]{response.url}")
                 responsetext = response.text
-                # If the repsonse contains our announce url then we are on the upload page and the upload wasn't successful.
+                # If the response contains our announce URL, then we are on the upload page and the upload wasn't successful.
                 if responsetext.find(self.announce_url) != -1:
                     # Get the error message.
-                    # <div class="alert alert--error text--center">No torrent file uploaded, or file is empty.</div>
                     errorMessage = ""
                     match = re.search(r"""<div class="alert alert--error.*?>(.+?)</div>""", responsetext)
                     if match is not None:
@@ -837,12 +866,9 @@ class PTP():
 
                     raise UploadException(f"Upload to PTP failed: {errorMessage} ({response.status_code}). (We are still on the upload page.)")
 
-
                 # URL format in case of successful upload: https://passthepopcorn.me/torrents.php?id=9329&torrentid=91868
                 match = re.match(r".*?passthepopcorn\.me/torrents\.php\?id=(\d+)&torrentid=(\d+)", response.url)
                 if match is None:
                     console.print(url)
                     console.print(data)
                     raise UploadException(f"Upload to PTP failed: result URL {response.url} ({response.status_code}) is not the expected one.")
-
-
