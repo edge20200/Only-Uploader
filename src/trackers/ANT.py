@@ -12,7 +12,6 @@ from pathlib import Path
 from src.trackers.COMMON import COMMON
 from src.console import console
 
-
 class ANT():
     """
     Edit for Tracker:
@@ -75,9 +74,9 @@ class ANT():
         torrent_filename = "BASE"
         torrent = Torrent.read(f"{meta['base_dir']}/tmp/{meta['uuid']}/BASE.torrent")
         total_size = sum(file.size for file in torrent.files)
-        
+
         # Calculate the number of pieces and the torrent file size based on the current piece size
-         def calculate_pieces_and_file_size(total_size, piece_size):
+        def calculate_pieces_and_file_size(total_size, piece_size):
             num_pieces = math.ceil(total_size / piece_size)
             torrent_file_size = 20 + (num_pieces * 20)  # Approximate size: 20 bytes header + 20 bytes per piece
             return num_pieces, torrent_file_size
