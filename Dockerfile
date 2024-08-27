@@ -1,28 +1,34 @@
-FROM alpine:latest
+FROM python:3.11
 
-# Install bash
-RUN apk add --no-cache bash
+# Update the package list and install system dependencies including mono
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    ffmpeg \
+    mediainfo \
+    git \
+    g++ \
+    cargo \
+    mktorrent \
+    rustc \
+    mono-complete && \
+    rm -rf /var/lib/apt/lists/*
 
-# Add mono repo and mono
-RUN apk add --no-cache mono --repository http://dl-cdn.alpinelinux.org/alpine/edge/testing
+# Set up a virtual environment to isolate our Python dependencies
+RUN python -m venv /venv
+ENV PATH="/venv/bin:$PATH"
 
-# Install requirements
-RUN  apk add --no-cache --upgrade ffmpeg mediainfo python3 git py3-pip python3-dev g++ cargo mktorrent rust
-RUN python3 -m venv /opt/venv
-ENV PATH="/opt/venv/bin:$PATH"
-RUN pip3 install wheel
+# Install wheel and other Python dependencies
+RUN pip install --upgrade pip wheel
 
-WORKDIR UploadAssistant
+# Set the working directory in the container
+WORKDIR /Only-Uploader
 
-# Install python requirements
+# Copy the Python requirements file and install Python dependencies
 COPY requirements.txt .
-RUN pip3 install -r requirements.txt
+RUN pip install -r requirements.txt
 
-# Copy everything
+# Copy the rest of the application's code
 COPY . .
 
-# Set shell command alias
-RUN echo 'alias l4g="/Only-Uploader/upload.py"' >> /root/.bashrc
-
-# Start container and tail to keep container running
-CMD ["/bin/bash", "-c", "tail -f /dev/null"]
+# Set the entry point for the container
+ENTRYPOINT ["python", "/Only-Uploader/upload.py"]

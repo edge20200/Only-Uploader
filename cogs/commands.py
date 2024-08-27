@@ -569,6 +569,16 @@ class Commands(commands.Cog):
                     upload_embed_description = upload_embed_description.replace('STC', '~~STC~~')
                     upload_embed = discord.Embed(title=f"Uploaded `{meta['name']}` to:", description=upload_embed_description, color=0x00ff40)
                     await msg.edit(embed=upload_embed)
+            if "OE" in tracker_list:
+                OE = OE(config=config)
+                dupes = await stc.search_existing(meta)
+                meta = await self.dupe_embed(dupes, meta, tracker_emojis, channel)
+                if meta['upload'] == True:
+                    await oe.upload(meta)
+                    await client.add_to_client(meta, "OE")
+                    upload_embed_description = upload_embed_description.replace('OE', '~~OE~~')
+                    upload_embed = discord.Embed(title=f"Uploaded `{meta['name']}` to:", description=upload_embed_description, color=0x00ff40)
+                    await msg.edit(embed=upload_embed)
             if "LCD" in tracker_list:
                 lcd = LCD(config=config)
                 dupes = await lcd.search_existing(meta)
@@ -601,7 +611,7 @@ class Commands(commands.Cog):
         else:
             dupe_text = "\n\n•".join(dupes)
             dupe_text = f"```•{dupe_text}```"
-            embed = discord.Embed(title="Are these dupes?", description=dupe_text, color=0xff0000)
+            embed = discord.Embed(title="Check if these are actually dupes!", description=dupe_text, color=0xff0000)
             embed.set_footer(text=f"{emojis['CANCEL']} to abort upload | {emojis['UPLOAD']} to upload anyways")
             message = await channel.send(embed=embed)
             await message.add_reaction(emojis['CANCEL'])

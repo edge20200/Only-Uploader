@@ -35,11 +35,23 @@ class LT():
         self.banned_groups = [""]
         pass
 
-    async def get_cat_id(self, category_name):
+    async def get_cat_id(self, category_name, meta):
         category_id = {
             'MOVIE': '1',
             'TV': '2',
+            'ANIME': '5',
+            'TELENOVELAS': '8',
+            'Doramas & Turcas': '20', 
             }.get(category_name, '0')
+        #if is anime
+        if meta['anime'] == True and category_id == '2':
+            category_id = '5'
+        #elif is telenovela
+        elif category_id == '2' and ("telenovela" in meta['keywords'] or "telenovela" in meta['overview']):
+            category_id = '8'
+        #if is  TURCAS o Doramas
+        #elif meta["original_language"] in ['ja', 'ko', 'tr'] and category_id == '2' and 'Drama' in meta['genres'] :
+            #category_id = '20'
         return category_id
 
     async def get_type_id(self, type):
@@ -70,9 +82,17 @@ class LT():
         return resolution_id
 
     async def edit_name(self, meta):
-        lt_name = meta['name']
-        lt_name = lt_name.replace('Dubbed', '').replace('Dual-Audio', '')
+        lt_name = meta['name'].replace('Dubbed', '').replace('Dual-Audio', '').replace('  ', ' ').strip()
+        # Check if audio Spanish exists, if not append [SUBS] at the end
+        if meta['type'] != 'DISC': #DISC don't have mediainfo
+            audio_language_list = meta['mediainfo']['media']['track'][0].get('Audio_Language_List', '')
+            if 'Spanish' not in audio_language_list and '[SUBS]' not in lt_name:
+                if not meta['tag']:
+                    lt_name += " [SUBS]"
+                else:
+                    lt_name = lt_name.replace(meta['tag'], f" [SUBS]{meta['tag']}")
         return lt_name
+
 
     ###############################################################
     ######   STOP HERE UNLESS EXTRA MODIFICATION IS NEEDED   ######
@@ -81,11 +101,11 @@ class LT():
     async def upload(self, meta):
         common = COMMON(config=self.config)
         await common.edit_torrent(meta, self.tracker, self.source_flag)
-        cat_id = await self.get_cat_id(meta['category'])
+        cat_id = await self.get_cat_id(meta['category'], meta)
         type_id = await self.get_type_id(meta['type'])
         resolution_id = await self.get_res_id(meta['resolution'])
         await common.unit3d_edit_desc(meta, self.tracker, self.signature)
-        region_id = await common.unit3d_region_ids(meta.get('region'))
+        #region_id = await common.unit3d_region_ids(meta.get('region'))
         distributor_id = await common.unit3d_distributor_ids(meta.get('distributor'))
         lt_name = await self.edit_name(meta)
         if meta['anon'] == 0 and bool(str2bool(str(self.config['TRACKERS'][self.tracker].get('anon', "False")))) == False:
@@ -131,13 +151,14 @@ class LT():
             if meta['tag'] != "" and (meta['tag'][1:] in self.config['TRACKERS'][self.tracker].get('internal_groups', [])):
                 data['internal'] = 1
 
+
         if region_id != 0:
             data['region_id'] = region_id
         if distributor_id != 0:
             data['distributor_id'] = distributor_id
         if meta.get('category') == "TV":
-            data['season_number'] = meta.get('season_int', '0')
-            data['episode_number'] = meta.get('episode_int', '0')
+            data['season_number'] = int(meta.get('season_int', '0'))
+            data['episode_number'] = int(meta.get('episode_int', '0'))
         headers = {
             'User-Agent': f'Upload Assistant/2.1 ({platform.system()} {platform.release()})'
         }
@@ -167,7 +188,7 @@ class LT():
         params = {
             'api_token' : self.config['TRACKERS'][self.tracker]['api_key'].strip(),
             'tmdbId' : meta['tmdb'],
-            'categories[]' : await self.get_cat_id(meta['category']),
+            'categories[]' : await self.get_cat_id(meta['category'], meta),
             'types[]' : await self.get_type_id(meta['type']),
             'resolutions[]' : await self.get_res_id(meta['resolution']),
             'name' : ""
