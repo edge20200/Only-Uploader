@@ -294,7 +294,7 @@ class Clients():
 
         content_layout = client.get('content_layout', 'Original')
 
- qbt_client.torrents_add(torrent_files=torrent.dump(), save_path=path, use_auto_torrent_management=auto_management, is_skip_checking=True, content_layout=content_layout, category=qbt_category)
+        qbt_client.torrents_add(torrent_files=torrent.dump(), save_path=path, use_auto_torrent_management=auto_management, is_skip_checking=True, content_layout=content_layout, category=qbt_category)
         # Wait for up to 30 seconds for qbit to actually return the download
         # there's an async race conditiion within qbt that it will return ok before the torrent is actually added
         for _ in range(0, 30):
