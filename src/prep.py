@@ -1650,7 +1650,7 @@ class Prep():
                 except Exception as e:
                     console.print(traceback.format_exc())
                     pass
-                for t in mi.get('media', {}).get('track', []):
+            for t in mi.get('media', {}).get('track', []):
                 if t.get('@type') != "Audio":
                     continue
 
