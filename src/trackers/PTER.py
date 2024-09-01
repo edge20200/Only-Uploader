@@ -1,19 +1,16 @@
 from bs4 import BeautifulSoup
 import requests
-import asyncio
 import re
 import os
 from pathlib import Path
-import traceback
 import json
 import glob
 from str2bool import str2bool
-import cli_ui
 import pickle
 from unidecode import unidecode
-from urllib.parse import urlparse, quote
+from urllib.parse import urlparse
 from src.trackers.COMMON import COMMON
-from src.exceptions import *
+from src.exceptions import *  # noqa E403
 from src.console import console
 
 
@@ -23,19 +20,19 @@ class PTER():
         self.config = config
         self.tracker = 'PTER'
         self.source_flag = 'PTER'
-        self.passkey =  str(config['TRACKERS']['PTER'].get('passkey', '')).strip()
+        self.passkey = str(config['TRACKERS']['PTER'].get('passkey', '')).strip()
         self.username = config['TRACKERS']['PTER'].get('username', '').strip()
         self.password = config['TRACKERS']['PTER'].get('password', '').strip()
         self.rehost_images = config['TRACKERS']['PTER'].get('img_rehost', False)
         self.ptgen_api = config['TRACKERS']['PTER'].get('ptgen_api').strip()
 
-        self.ptgen_retry=3
+        self.ptgen_retry = 3
         self.signature = None
         self.banned_groups = [""]
 
     async def validate_credentials(self, meta):
         vcookie = await self.validate_cookies(meta)
-        if vcookie != True:
+        if vcookie is not True:
             console.print('[red]Failed to validate cookies. Please confirm that the site is up and your passkey is valid.')
             return False
         return True
@@ -79,9 +76,9 @@ class PTER():
                 soup = BeautifulSoup(r.text, 'lxml')
                 rows = soup.select('table.torrents > tr:has(table.torrentname)')
                 for row in rows:
-                    text=row.select_one('a[href^="details.php?id="]')
-                    if text != None:
-                        release=text.attrs['title']
+                    text = row.select_one('a[href^="details.php?id="]')
+                    if text is not None:
+                        release = text.attrs['title']
                     if release:
                         dupes.append(release)
         else:
@@ -108,8 +105,8 @@ class PTER():
 
     async def get_area_id(self, meta):
 
-        area_id=8
-        area_map = { #To do
+        area_id = 8
+        area_map = {  # To do
             "中国大陆": 1, "中国香港": 2, "中国台湾": 3, "美国": 4, "日本": 6, "韩国": 5,
             "印度": 7, "法国": 4, "意大利": 4, "德国": 4, "西班牙": 4, "葡萄牙": 4,
             "英国": 4, "阿根廷": 8, "澳大利亚": 4, "比利时": 4,
@@ -121,19 +118,17 @@ class PTER():
                 return area_map[area]
         return area_id
 
-
-
     async def get_type_medium_id(self, meta):
         medium_id = "EXIT"
         # 1 = UHD Discs
         if meta.get('is_disc', '') in ("BDMV", "HD DVD"):
-            if meta['resolution']=='2160p':
+            if meta['resolution'] == '2160p':
                 medium_id = 1
             else:
-                medium_id = 2 #BD Discs
+                medium_id = 2  # BD Discs
 
         if meta.get('is_disc', '') == "DVD":
-                medium_id = 7
+            medium_id = 7
 
         # 4 = HDTV
         if meta.get('type', '') == "HDTV":
@@ -165,7 +160,6 @@ class PTER():
                 if ptgen.strip() != '':
                     descfile.write(ptgen)
 
-
             bbcode = BBCODE()
             if meta.get('discs', []) != []:
                 discs = meta['discs']
@@ -190,7 +184,7 @@ class PTER():
             desc = re.sub(r"(\[img=\d+)]", "[img]", desc, flags=re.IGNORECASE)
             descfile.write(desc)
 
-            if self.rehost_images == True:
+            if self.rehost_images is True:
                 console.print("[green]Rehosting Images...")
                 images = await self.pterimg_upload(meta)
                 if len(images) > 0:
@@ -210,12 +204,12 @@ class PTER():
                         descfile.write(f"[url={web_url}][img]{img_url}[/img][/url]")
                     descfile.write("[/center]")
 
-            if self.signature != None:
+            if self.signature is not None:
                 descfile.write("\n\n")
                 descfile.write(self.signature)
             descfile.close()
 
-    async def get_auth_token(self,meta):
+    async def get_auth_token(self, meta):
         if not os.path.exists(f"{meta['base_dir']}/data/cookies"):
             Path(f"{meta['base_dir']}/data/cookies").mkdir(parents=True, exist_ok=True)
         cookiefile = f"{meta['base_dir']}/data/cookies/Pterimg.pickle"
@@ -228,7 +222,7 @@ class PTER():
                 loggedIn = await self.validate_login(r)
             else:
                 console.print("[yellow]Pterimg Cookies not found. Creating new session.")
-            if loggedIn == True:
+            if loggedIn is True:
                 auth_token = re.search(r'auth_token.*?\"(\w+)\"', r.text).groups()[0]
             else:
                 data = {
@@ -238,9 +232,9 @@ class PTER():
                 }
                 r = session.get("https://s3.pterclub.com")
                 data['auth_token'] = re.search(r'auth_token.*?\"(\w+)\"', r.text).groups()[0]
-                loginresponse = session.post(url='https://s3.pterclub.com/login',data=data)
+                loginresponse = session.post(url='https://s3.pterclub.com/login', data=data)
                 if not loginresponse.ok:
-                    raise LoginException("Failed to login to Pterimg. ")
+                    raise LoginException("Failed to login to Pterimg. ")  # noqa #F405
                 auth_token = re.search(r'auth_token = *?\"(\w+)\"', loginresponse.text).groups()[0]
                 with open(cookiefile, 'wb') as cf:
                     pickle.dump(session.cookies, cf)
@@ -256,14 +250,14 @@ class PTER():
 
     async def pterimg_upload(self, meta):
         images = glob.glob(f"{meta['base_dir']}/tmp/{meta['uuid']}/{meta['filename']}-*.png")
-        url='https://s3.pterclub.com'
-        image_list=[]
+        url = 'https://s3.pterclub.com'
+        image_list = []
         data = {
             'type': 'file',
             'action': 'upload',
             'nsfw': 0,
             'auth_token': await self.get_auth_token(meta)
-            }
+        }
         cookiefile = f"{meta['base_dir']}/data/cookies/Pterimg.pickle"
         with requests.Session() as session:
             if os.path.exists(cookiefile):
@@ -278,9 +272,9 @@ class PTER():
                         except json.decoder.JSONDecodeError:
                             res = {}
                         if not req.ok:
-                            if res['error']['message'] in ('重复上传','Duplicated upload'):
+                            if res['error']['message'] in ('重复上传', 'Duplicated upload'):
                                 continue
-                            raise(f'HTTP {req.status_code}, reason: {res["error"]["message"]}')
+                            raise (f'HTTP {req.status_code}, reason: {res["error"]["message"]}')
                         image_dict = {}
                         image_dict['web_url'] = res['image']['url']
                         image_dict['img_url'] = res['image']['url']
@@ -288,7 +282,7 @@ class PTER():
         return image_list
 
     async def get_anon(self, anon):
-        if anon == 0 and bool(str2bool(str(self.config['TRACKERS'][self.tracker].get('anon', "False")))) == False:
+        if anon == 0 and bool(str2bool(str(self.config['TRACKERS'][self.tracker].get('anon', "False")))) is False:
             anon = 'no'
         else:
             anon = 'yes'
@@ -304,7 +298,7 @@ class PTER():
         pter_name = pter_name.replace(meta["aka"], '')
         pter_name = pter_name.replace('PQ10', 'HDR')
 
-        if meta['type'] == 'WEBDL' and meta.get('has_encode_settings', False) == True:
+        if meta['type'] == 'WEBDL' and meta.get('has_encode_settings', False) is True:
             pter_name = pter_name.replace('H.264', 'x264')
 
         return pter_name
@@ -328,13 +322,13 @@ class PTER():
         common = COMMON(config=self.config)
         await common.edit_torrent(meta, self.tracker, self.source_flag)
 
-        desc_file=f"{meta['base_dir']}/tmp/{meta['uuid']}/[{self.tracker}]DESCRIPTION.txt"
+        desc_file = f"{meta['base_dir']}/tmp/{meta['uuid']}/[{self.tracker}]DESCRIPTION.txt"
         if not os.path.exists(desc_file):
             await self.edit_desc(meta)
 
         pter_name = await self.edit_name(meta)
 
-        if meta['bdinfo'] != None:
+        if meta['bdinfo'] is not None:
             mi_dump = open(f"{meta['base_dir']}/tmp/{meta['uuid']}/BD_SUMMARY_00.txt", 'r', encoding='utf-8')
         else:
             mi_dump = open(f"{meta['base_dir']}/tmp/{meta['uuid']}/MEDIAINFO.txt", 'r', encoding='utf-8')
@@ -348,19 +342,19 @@ class PTER():
             else:
                 torrentFileName = unidecode(os.path.basename(meta['path']).replace(' ', '.'))
             files = {
-                'file' : (f"{torrentFileName}.torrent", torrentFile, "application/x-bittorent"),
+                'file': (f"{torrentFileName}.torrent", torrentFile, "application/x-bittorent"),
             }
 
-            #use chinese small_descr
+            # use chinese small_descr
             if meta['ptgen']["trans_title"] != ['']:
-                small_descr=''
+                small_descr = ''
                 for title_ in meta['ptgen']["trans_title"]:
-                  small_descr+=f'{title_} / '
-                small_descr+="| 类别:"+meta['ptgen']["genre"][0]
-                small_descr=small_descr.replace('/ |','|')
+                    small_descr += f'{title_} / '
+                small_descr += "| 类别:" + meta['ptgen']["genre"][0]
+                small_descr = small_descr.replace('/ |', '|')
             else:
-                small_descr=meta['title']
-            data= {
+                small_descr = meta['title']
+            data = {
                 "name": pter_name,
                 "small_descr": small_descr,
                 "descr": pter_desc,
@@ -371,7 +365,7 @@ class PTER():
                 "zhongzi": await self.is_zhongzi(meta)
             }
 
-            if meta.get('personalrelease', False) == True:
+            if meta.get('personalrelease', False) is True:
                 data["pr"] = "yes"
 
             url = "https://pterclub.com/takeupload.php"
@@ -390,13 +384,13 @@ class PTER():
                         mi_dump.close()
 
                         if up.url.startswith("https://pterclub.com/details.php?id="):
-                            console.print(f"[green]Uploaded to: [yellow]{up.url.replace('&uploaded=1','')}[/yellow][/green]")
+                            console.print(f"[green]Uploaded to: [yellow]{up.url.replace('&uploaded=1', '')}[/yellow][/green]")
                             id = re.search(r"(id=)(\d+)", urlparse(up.url).query).group(2)
                             await self.download_new_torrent(id, torrent_path)
                         else:
                             console.print(data)
                             console.print("\n\n")
-                            raise UploadException(f"Upload to Pter Failed: result URL {up.url} ({up.status_code}) was not expected", 'red')
+                            raise UploadException(f"Upload to Pter Failed: result URL {up.url} ({up.status_code}) was not expected", 'red')  # noqa #F405
         return
 
     async def download_new_torrent(self, id, torrent_path):
@@ -408,6 +402,3 @@ class PTER():
         else:
             console.print("[red]There was an issue downloading the new .torrent from pter")
             console.print(r.text)
-
-
-

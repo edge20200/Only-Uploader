@@ -28,7 +28,7 @@ class DiscParse():
             for file in os.listdir(save_dir):
                 if file == f"BD_SUMMARY_{str(i).zfill(2)}.txt":
                     bdinfo_text = save_dir + "/" + file
-            if bdinfo_text == None or meta_discs == []:
+            if bdinfo_text is None or meta_discs == []:
                 if os.path.exists(f"{save_dir}/BD_FULL_{str(i).zfill(2)}.txt"):
                     bdinfo_text = os.path.abspath(f"{save_dir}/BD_FULL_{str(i).zfill(2)}.txt")
                 else:
@@ -39,7 +39,7 @@ class DiscParse():
                             console.print(f"[bold green]Scanning {path}")
                             proc = await asyncio.create_subprocess_exec('mono', f"{base_dir}/bin/BDInfo/BDInfo.exe", '-w', path, save_dir)
                             await proc.wait()
-                        except:
+                        except Exception:
                             console.print('[bold red]mono not found, please install mono')
 
                     elif sys.platform.startswith('win32'):
@@ -54,7 +54,7 @@ class DiscParse():
                     try:
                         if bdinfo_text == "":
                             for file in os.listdir(save_dir):
-                                if file.startswith(f"BDINFO"):
+                                if file.startswith("BDINFO"):
                                     bdinfo_text = save_dir + "/" + file
                         with open(bdinfo_text, 'r') as f:
                             text = f.read()
@@ -64,7 +64,7 @@ class DiscParse():
                             result = result2.split("********************", 1)
                             bd_summary = result[0].rstrip(" \n")
                             f.close()
-                        with open(bdinfo_text, 'r') as f: # parse extended BDInfo
+                        with open(bdinfo_text, 'r') as f:  # parse extended BDInfo
                             text = f.read()
                             result = text.split("[code]", 3)
                             result2 = result[2].rstrip(" \n")
@@ -84,7 +84,7 @@ class DiscParse():
                 with open(f"{save_dir}/BD_SUMMARY_{str(i).zfill(2)}.txt", 'w') as f:
                     f.write(bd_summary.strip())
                     f.close()
-                with open(f"{save_dir}/BD_SUMMARY_EXT.txt", 'w') as f: # write extended BDInfo file
+                with open(f"{save_dir}/BD_SUMMARY_EXT.txt", 'w') as f:  # write extended BDInfo file
                     f.write(ext_bd_summary.strip())
                     f.close()
 
@@ -98,8 +98,6 @@ class DiscParse():
 
         return discs, discs[0]['bdinfo']
 
-
-
     def parse_bdinfo(self, bdinfo_input, files, path):
         bdinfo = dict()
         bdinfo['video'] = list()
@@ -107,56 +105,56 @@ class DiscParse():
         bdinfo['subtitles'] = list()
         bdinfo['path'] = path
         lines = bdinfo_input.splitlines()
-        for l in lines:
+        for l in lines:  # noqa E741
             line = l.strip().lower()
             if line.startswith("*"):
                 line = l.replace("*", "").strip().lower()
             if line.startswith("playlist:"):
                 playlist = l.split(':', 1)[1]
-                bdinfo['playlist'] = playlist.split('.',1)[0].strip()
+                bdinfo['playlist'] = playlist.split('.', 1)[0].strip()
             if line.startswith("disc size:"):
                 size = l.split(':', 1)[1]
-                size = size.split('bytes', 1)[0].replace(',','')
-                size = float(size)/float(1<<30)
+                size = size.split('bytes', 1)[0].replace(',', '')
+                size = float(size) / float(1 << 30)
                 bdinfo['size'] = size
             if line.startswith("length:"):
                 length = l.split(':', 1)[1]
-                bdinfo['length'] = length.split('.',1)[0].strip()
+                bdinfo['length'] = length.split('.', 1)[0].strip()
             if line.startswith("video:"):
                 split1 = l.split(':', 1)[1]
                 split2 = split1.split('/', 12)
                 while len(split2) != 9:
                     split2.append("")
-                n=0
+                n = 0
                 if "Eye" in split2[2].strip():
                     n = 1
                     three_dim = split2[2].strip()
                 else:
                     three_dim = ""
                 try:
-                    bit_depth = split2[n+6].strip()
-                    hdr_dv = split2[n+7].strip()
-                    color = split2[n+8].strip()
-                except:
+                    bit_depth = split2[n + 6].strip()
+                    hdr_dv = split2[n + 7].strip()
+                    color = split2[n + 8].strip()
+                except Exception:
                     bit_depth = ""
                     hdr_dv = ""
                     color = ""
                 bdinfo['video'].append({
                     'codec': split2[0].strip(),
                     'bitrate': split2[1].strip(),
-                    'res': split2[n+2].strip(),
-                    'fps': split2[n+3].strip(),
-                    'aspect_ratio' : split2[n+4].strip(),
-                    'profile': split2[n+5].strip(),
-                    'bit_depth' : bit_depth,
-                    'hdr_dv' : hdr_dv,
-                    'color' : color,
-                    '3d' : three_dim,
-                    })
+                    'res': split2[n + 2].strip(),
+                    'fps': split2[n + 3].strip(),
+                    'aspect_ratio': split2[n + 4].strip(),
+                    'profile': split2[n + 5].strip(),
+                    'bit_depth': bit_depth,
+                    'hdr_dv': hdr_dv,
+                    'color': color,
+                    '3d': three_dim,
+                })
             elif line.startswith("audio:"):
                 if "(" in l:
-                    l = l.split("(")[0]
-                l = l.strip()
+                    l = l.split("(")[0]  # noqa E741
+                l = l.strip()  # noqa E741
                 split1 = l.split(':', 1)[1]
                 split2 = split1.split('/')
                 n = 0
@@ -166,18 +164,18 @@ class DiscParse():
                 else:
                     fuckatmos = ""
                 try:
-                    bit_depth = split2[n+5].strip()
-                except:
+                    bit_depth = split2[n + 5].strip()
+                except Exception:
                     bit_depth = ""
                 bdinfo['audio'].append({
-                    'language' : split2[0].strip(),
-                    'codec' : split2[1].strip(),
-                    'channels' : split2[n+2].strip(),
-                    'sample_rate' : split2[n+3].strip(),
-                    'bitrate' : split2[n+4].strip(),
-                    'bit_depth' : bit_depth, # Also DialNorm, but is not in use anywhere yet
+                    'language': split2[0].strip(),
+                    'codec': split2[1].strip(),
+                    'channels': split2[n + 2].strip(),
+                    'sample_rate': split2[n + 3].strip(),
+                    'bitrate': split2[n + 4].strip(),
+                    'bit_depth': bit_depth,  # Also DialNorm, but is not in use anywhere yet
                     'atmos_why_you_be_like_this': fuckatmos,
-                    })
+                })
             elif line.startswith("disc title:"):
                 title = l.split(':', 1)[1]
                 bdinfo['title'] = title
@@ -195,18 +193,16 @@ class DiscParse():
                 stripped = line.split()
                 m2ts = {}
                 bd_file = stripped[0]
-                time_in = stripped[1]
+                time_in = stripped[1]  # noqa F841
                 bd_length = stripped[2]
-                bd_size = stripped[3]
-                bd_bitrate = stripped[4]
+                bd_size = stripped[3]  # noqa F841
+                bd_bitrate = stripped[4]  # noqa F841
                 m2ts['file'] = bd_file
                 m2ts['length'] = bd_length
                 bdinfo['files'].append(m2ts)
-            except:
+            except Exception:
                 pass
         return bdinfo
-
-
 
     """
     Parse VIDEO_TS and get mediainfos
@@ -215,7 +211,7 @@ class DiscParse():
         for each in discs:
             path = each.get('path')
             os.chdir(path)
-            files = glob(f"VTS_*.VOB")
+            files = glob("VTS_*.VOB")
             files.sort()
             # Switch to ordered dictionary
             filesdict = OrderedDict()
@@ -233,7 +229,6 @@ class DiscParse():
                 vob_set_mi = json.loads(vob_set_mi)
                 vob_set_duration = vob_set_mi['media']['track'][1]['Duration']
 
-
                 # If the duration of the new vob set > main set by more than 10% then it's our new main set
                 # This should make it so TV shows pick the first episode
                 if (float(vob_set_duration) * 1.00) > (float(main_set_duration) * 1.10) or len(main_set) < 1:
@@ -243,13 +238,12 @@ class DiscParse():
             set = main_set[0][:2]
             each['vob'] = vob = f"{path}/VTS_{set}_1.VOB"
             each['ifo'] = ifo = f"{path}/VTS_{set}_0.IFO"
-            each['vob_mi'] = MediaInfo.parse(os.path.basename(vob), output='STRING', full=False, mediainfo_options={'inform_version' : '1'}).replace('\r\n', '\n')
-            each['ifo_mi'] = MediaInfo.parse(os.path.basename(ifo), output='STRING', full=False, mediainfo_options={'inform_version' : '1'}).replace('\r\n', '\n')
-            each['vob_mi_full'] = MediaInfo.parse(vob, output='STRING', full=False, mediainfo_options={'inform_version' : '1'}).replace('\r\n', '\n')
-            each['ifo_mi_full'] = MediaInfo.parse(ifo, output='STRING', full=False, mediainfo_options={'inform_version' : '1'}).replace('\r\n', '\n')
+            each['vob_mi'] = MediaInfo.parse(os.path.basename(vob), output='STRING', full=False, mediainfo_options={'inform_version': '1'}).replace('\r\n', '\n')
+            each['ifo_mi'] = MediaInfo.parse(os.path.basename(ifo), output='STRING', full=False, mediainfo_options={'inform_version': '1'}).replace('\r\n', '\n')
+            each['vob_mi_full'] = MediaInfo.parse(vob, output='STRING', full=False, mediainfo_options={'inform_version': '1'}).replace('\r\n', '\n')
+            each['ifo_mi_full'] = MediaInfo.parse(ifo, output='STRING', full=False, mediainfo_options={'inform_version': '1'}).replace('\r\n', '\n')
 
-
-            size = sum(os.path.getsize(f) for f in os.listdir('.') if os.path.isfile(f))/float(1<<30)
+            size = sum(os.path.getsize(f) for f in os.listdir('.') if os.path.isfile(f)) / float(1 << 30)
             if size <= 7.95:
                 dvd_size = "DVD9"
                 if size <= 4.37:
@@ -270,6 +264,6 @@ class DiscParse():
                 if file_size > size:
                     largest = file
                     size = file_size
-            each['evo_mi'] = MediaInfo.parse(os.path.basename(largest), output='STRING', full=False, mediainfo_options={'inform_version' : '1'})
+            each['evo_mi'] = MediaInfo.parse(os.path.basename(largest), output='STRING', full=False, mediainfo_options={'inform_version': '1'})
             each['largest_evo'] = os.path.abspath(f"{path}/{largest}")
         return discs

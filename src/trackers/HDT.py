@@ -2,19 +2,15 @@ import requests
 import asyncio
 import re
 import os
-import json
-import glob
 import cli_ui
-import pickle
-from pathlib import Path
 from str2bool import str2bool
 from bs4 import BeautifulSoup
 from unidecode import unidecode
 from pymediainfo import MediaInfo
-
 from src.trackers.COMMON import COMMON
-from src.exceptions import *
+from src.exceptions import * # noqa F403
 from src.console import console
+
 
 class HDT():
 
@@ -92,9 +88,6 @@ class HDT():
 
         return cat_id
 
-
-
-
     async def edit_name(self, meta):
         hdt_name = meta['name']
         if meta['category'] == "TV" and meta.get('tv_pack', 0) == 0 and meta.get('episode_title_storage', '').strip() != '':
@@ -110,7 +103,7 @@ class HDT():
         return hdt_name
 
     ###############################################################
-    ######   STOP HERE UNLESS EXTRA MODIFICATION IS NEEDED   ######
+    ######   STOP HERE UNLESS EXTRA MODIFICATION IS NEEDED   ###### # noqa E266
     ###############################################################
 
     async def upload(self, meta):
@@ -122,9 +115,9 @@ class HDT():
 
         # Confirm the correct naming order for HDT
         cli_ui.info(f"HDT name: {hdt_name}")
-        if meta.get('unattended', False) == False:
+        if meta.get('unattended', False) is False:
             hdt_confirm = cli_ui.ask_yes_no("Correct?", default=False)
-            if hdt_confirm != True:
+            if hdt_confirm is not True:
                 hdt_name_manually = cli_ui.ask_string("Please enter a proper name", default="")
                 if hdt_name_manually == "":
                     console.print('No proper name given')
@@ -140,12 +133,12 @@ class HDT():
         with open(torrent_path, 'rb') as torrentFile:
             torrentFileName = unidecode(hdt_name)
             files = {
-                'torrent' : (f"{torrentFileName}.torrent", torrentFile, "application/x-bittorent")
+                'torrent': (f"{torrentFileName}.torrent", torrentFile, "application/x-bittorent")
             }
             data = {
-                'filename' : hdt_name,
-                'category' : cat_id,
-                'info' : hdt_desc.strip()
+                'filename': hdt_name,
+                'category': cat_id,
+                'info': hdt_desc.strip()
             }
 
             # 3D
@@ -173,7 +166,7 @@ class HDT():
                 data['season'] = 'false'
 
             # Anonymous check
-            if meta['anon'] == 0 and bool(str2bool(str(self.config['TRACKERS'][self.tracker].get('anon', "False")))) == False:
+            if meta['anon'] == 0 and bool(str2bool(str(self.config['TRACKERS'][self.tracker].get('anon', "False")))) is False:
                 data['anonymous'] = 'false'
             else:
                 data['anonymous'] = 'true'
@@ -200,9 +193,8 @@ class HDT():
                         console.print(data)
                         console.print("\n\n")
                         console.print(up.text)
-                        raise UploadException(f"Upload to HDT Failed: result URL {up.url} ({up.status_code}) was not expected", 'red')
+                        raise UploadException(f"Upload to HDT Failed: result URL {up.url} ({up.status_code}) was not expected", 'red') # noqa F405
         return
-
 
     async def search_existing(self, meta):
         dupes = []
@@ -211,22 +203,22 @@ class HDT():
             cookiefile = os.path.abspath(f"{meta['base_dir']}/data/cookies/HDT.txt")
             session.cookies.update(await common.parseCookieFile(cookiefile))
 
-            search_url = f"https://hd-torrents.org/torrents.php"
+            search_url = "https://hd-torrents.org/torrents.php"
             csrfToken = await self.get_csrfToken(session, search_url)
             if int(meta['imdb_id'].replace('tt', '')) != 0:
                 params = {
-                    'csrfToken' : csrfToken,
-                    'search' : meta['imdb_id'],
-                    'active' : '0',
-                    'options' : '2',
-                    'category[]' : await self.get_category_id(meta)
+                    'csrfToken': csrfToken,
+                    'search': meta['imdb_id'],
+                    'active': '0',
+                    'options': '2',
+                    'category[]': await self.get_category_id(meta)
                 }
             else:
                 params = {
-                    'csrfToken' : csrfToken,
-                    'search' : meta['title'],
-                    'category[]' : await self.get_category_id(meta),
-                    'options' : '3'
+                    'csrfToken': csrfToken,
+                    'search': meta['title'],
+                    'category[]': await self.get_category_id(meta),
+                    'options': '3'
                 }
 
             r = session.get(search_url, params=params)
@@ -239,15 +231,13 @@ class HDT():
 
         return dupes
 
-
     async def validate_credentials(self, meta):
         cookiefile = os.path.abspath(f"{meta['base_dir']}/data/cookies/HDT.txt")
         vcookie = await self.validate_cookies(meta, cookiefile)
-        if vcookie != True:
+        if vcookie is not True:
             console.print('[red]Failed to validate cookies. Please confirm that the site is up or export a fresh cookie file from the site')
             return False
         return True
-
 
     async def validate_cookies(self, meta, cookiefile):
         common = COMMON(config=self.config)
@@ -267,8 +257,6 @@ class HDT():
                     return False
         else:
             return False
-
-
 
     """
     Old login method, disabled because of site's DDOS protection. Better to use exported cookies.
@@ -299,12 +287,11 @@ class HDT():
         return
     """
 
-
     async def get_csrfToken(self, session, url):
         r = session.get(url)
         await asyncio.sleep(0.5)
         soup = BeautifulSoup(r.text, 'html.parser')
-        csrfToken = soup.find('input', {'name' : 'csrfToken'}).get('value')
+        csrfToken = soup.find('input', {'name': 'csrfToken'}).get('value')
         return csrfToken
 
     async def edit_desc(self, meta):
@@ -315,7 +302,7 @@ class HDT():
                 video = meta['filelist'][0]
                 mi_template = os.path.abspath(f"{meta['base_dir']}/data/templates/MEDIAINFO.txt")
                 if os.path.exists(mi_template):
-                    media_info = MediaInfo.parse(video, output="STRING", full=False, mediainfo_options={"inform" : f"file://{mi_template}"})
+                    media_info = MediaInfo.parse(video, output="STRING", full=False, mediainfo_options={"inform": f"file://{mi_template}"})
                     descfile.write(f"""[left][font=consolas]\n{media_info}\n[/font][/left]\n""")
                 else:
                     console.print("[bold red]Couldn't find the MediaInfo template")
@@ -336,4 +323,3 @@ class HDT():
                     descfile.write(f'<a href="{raw_url}"><img src="{img_url}" height=137></a> ')
 
             descfile.close()
-
