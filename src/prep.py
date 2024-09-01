@@ -542,7 +542,7 @@ class Prep():
         is_disc = None
         videoloc = meta['path']
         bdinfo = None
-        from src.exceptions import * # noqa: F403
+        bd_summary = None  # noqa: F841
         discs = []
         parse = DiscParse()
         for path, directories, files in os. walk(meta['path']):
