@@ -17,10 +17,12 @@ A simple tool to take the work out of uploading.
   - Can re-use existing torrents instead of hashing new
   - Generates proper name for your upload using Mediainfo/BDInfo and TMDb/IMDb conforming to site rules
   - Checks for existing releases already on site
-  - Uploads to OE/PTP/BLU/BHD/Aither/THR/STC/R4E(limited)/HP/ACM/LCD/LST/NBL/ANT/FL/HUNO/RF/SN/RTF/OTW/FNP/CBR/UTP/AL/ULCX
+  - Uploads to OE/PTP/BLU/BHD/Aither/THR/STC/R4E(limited)/HP/ACM/LCD/LST/NBL/ANT/FL/HUNO/RF/SN/RTF/OTW/FNP/CBR/UTP/AL/ULCX/HDB
   - Adds to your client with fast resume, seeding instantly (rtorrent/qbittorrent/deluge/watch folder)
   - ALL WITH MINIMAL INPUT!
   - Currently works with .mkv/.mp4/Blu-ray/DVD/HD-DVDs
+
+  Built with updated BDInfoCLI from https://github.com/rokibhasansagar/BDInfoCLI-ng
 
   ## Image Hosts:
   - OnlyImage - oeimg

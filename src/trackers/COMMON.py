@@ -1,12 +1,13 @@
 from torf import Torrent
 import os
-import traceback
 import requests
 import re
 import json
+import click
 
 from src.bbcode import BBCODE
 from src.console import console
+
 
 class COMMON():
     def __init__(self, config):
@@ -31,7 +32,6 @@ class COMMON():
             new_torrent.metainfo['comment'] = comment
             new_torrent.metainfo['info']['source'] = source_flag
             Torrent.copy(new_torrent).write(f"{meta['base_dir']}/tmp/{meta['uuid']}/[{tracker}]{meta['clean_name']}.torrent", overwrite=True)
-
 
     async def unit3d_edit_desc(self, meta, tracker, signature, comparison=False, desc_header=""):
         base = open(f"{meta['base_dir']}/tmp/{meta['uuid']}/DESCRIPTION.txt", 'r', encoding='utf8').read()
@@ -61,7 +61,7 @@ class COMMON():
             desc = base
             desc = bbcode.convert_pre_to_code(desc)
             desc = bbcode.convert_hide_to_spoiler(desc)
-            if comparison == False:
+            if comparison is False:
                 desc = bbcode.convert_comparison_to_collapse(desc, 1000)
 
             desc = desc.replace('[img]', '[img=300]')
@@ -75,13 +75,10 @@ class COMMON():
                     descfile.write(f"[url={web_url}][img=350]{raw_url}[/img][/url]")
                 descfile.write("[/center]")
 
-            if signature != None:
+            if signature is not None:
                 descfile.write(signature)
             descfile.close()
         return
-
-
-
 
     async def unit3d_region_ids(self, region):
         region_id = {
@@ -115,7 +112,7 @@ class COMMON():
             'TOG': 218, 'TRI': 219, 'TUN': 220, 'TUR': 221, 'TUV': 222, 'TWN': 223, 'UAE': 224, 'UGA': 225,
             'UKR': 226, 'UMI': 227, 'URU': 228, 'USA': 229, 'UZB': 230, 'VAN': 231, 'VAT': 232, 'VEN': 233,
             'VGB': 234, 'VIE': 235, 'VIN': 236, 'VIR': 237, 'WAL': 238, 'WLF': 239, 'YEM': 240, 'ZAM': 241,
-            'ZIM': 242, 'EUR' : 243
+            'ZIM': 242, 'EUR': 243
         }.get(region, 0)
         return region_id
 
@@ -145,39 +142,126 @@ class COMMON():
         }.get(distributor, 0)
         return distributor_id
 
-    async def unit3d_torrent_info(self, tracker, torrent_url, id):
-        tmdb = imdb = tvdb = description = category = infohash = mal = None
+    async def unit3d_torrent_info(self, tracker, torrent_url, search_url, id=None, file_name=None):
+        tmdb = imdb = tvdb = description = category = infohash = mal = files = None # noqa F841
         imagelist = []
-        params = {'api_token' : self.config['TRACKERS'][tracker].get('api_key', '')}
-        url = f"{torrent_url}{id}"
+
+        # Build the params for the API request
+        params = {'api_token': self.config['TRACKERS'][tracker].get('api_key', '')}
+
+        # Determine the URL based on whether we're searching by file name or ID
+        if file_name:
+            url = f"{search_url}?file_name={file_name}"
+            console.print(f"[green]Searching {tracker} by file name: [bold yellow]{file_name}[/bold yellow]")
+        elif id:
+            url = f"{torrent_url}{id}?"
+            console.print(f"[green]Searching {tracker} by ID: [bold yellow]{id}[/bold yellow] via {url}")
+        else:
+            console.print("[red]No ID or file name provided for search.[/red]")
+            return None, None, None, None, None, None, None, None, None
+
         response = requests.get(url=url, params=params)
+        # console.print(f"Requested URL: {response.url}")
+        # console.print(f"Status Code: {response.status_code}")
+
         try:
-            response = response.json()
-            attributes = response['attributes']
-            category = attributes.get('category')
-            description = attributes.get('description')
-            tmdb = attributes.get('tmdb_id')
-            tvdb = attributes.get('tvdb_id')
-            mal = attributes.get('mal_id')
-            imdb = attributes.get('imdb_id')
-            infohash = attributes.get('info_hash')
+            json_response = response.json()
+            # console.print(json_response)
+        except ValueError:
+            # console.print(f"Response Text: {response.text}")
+            return None, None, None, None, None, None, None, None, None
 
-            bbcode = BBCODE()
-            description, imagelist = bbcode.clean_unit3d_description(description, torrent_url)
-            console.print(f"[green]Successfully grabbed description from {tracker}")
-        except Exception:
-            console.print(traceback.print_exc())
-            console.print(f"[yellow]Invalid Response from {tracker} API.")
+        try:
+            # Handle response when searching by file name (which might return a 'data' array)
+            data = json_response.get('data', [])
+            if data:
+                attributes = data[0].get('attributes', {})
 
+                # Extract data from the attributes
+                category = attributes.get('category')
+                description = attributes.get('description')
+                tmdb = attributes.get('tmdb_id')
+                tvdb = attributes.get('tvdb_id')
+                mal = attributes.get('mal_id')
+                imdb = attributes.get('imdb_id')
+                infohash = attributes.get('info_hash')
 
-        return tmdb, imdb, tvdb, mal, description, category, infohash, imagelist
+                if description:
+                    bbcode = BBCODE()
+                    description, imagelist = bbcode.clean_unit3d_description(description, torrent_url)
+                    console.print(f"[green]Successfully grabbed description from {tracker}")
+                    console.print(f"[blue]Extracted description: [yellow]{description}")
+
+                    # Allow user to edit or discard the description
+                    console.print("[cyan]Do you want to edit, discard or keep the description?[/cyan]")
+                    edit_choice = input("[cyan]Enter 'e' to edit, 'd' to discard, or press Enter to keep it as is: [/cyan]")
+
+                    if edit_choice.lower() == 'e':
+                        edited_description = click.edit(description)
+                        if edited_description:
+                            description = edited_description.strip()
+                        console.print(f"[green]Final description after editing:[/green] {description}")
+                    elif edit_choice.lower() == 'd':
+                        description = None
+                        console.print("[yellow]Description discarded.[/yellow]")
+                    else:
+                        console.print("[green]Keeping the original description.[/green]")
+                else:
+                    console.print(f"[yellow]No description found for {tracker}.[/yellow]")
+            else:
+                console.print(f"[yellow]No data found in the response for {tracker} when searching by file name.[/yellow]")
+
+            # Handle response when searching by ID
+            if id and not data:
+                attributes = json_response.get('attributes', {})
+
+                # Extract data from the attributes
+                category = attributes.get('category')
+                description = attributes.get('description')
+                tmdb = attributes.get('tmdb_id')
+                tvdb = attributes.get('tvdb_id')
+                mal = attributes.get('mal_id')
+                imdb = attributes.get('imdb_id')
+                infohash = attributes.get('info_hash')
+
+                if description:
+                    bbcode = BBCODE()
+                    description, imagelist = bbcode.clean_unit3d_description(description, torrent_url)
+                    console.print(f"[green]Successfully grabbed description from {tracker}")
+                    console.print(f"[blue]Extracted description: [yellow]{description}")
+
+                    # Allow user to edit or discard the description
+                    console.print("[cyan]Do you want to edit, discard or keep the description?[/cyan]")
+                    edit_choice = input("[cyan]Enter 'e' to edit, 'd' to discard, or press Enter to keep it as is: [/cyan]")
+
+                    if edit_choice.lower() == 'e':
+                        edited_description = click.edit(description)
+                        if edited_description:
+                            description = edited_description.strip()
+                        console.print(f"[green]Final description after editing:[/green] {description}")
+                    elif edit_choice.lower() == 'd':
+                        description = None
+                        console.print("[yellow]Description discarded.[/yellow]")
+                    else:
+                        console.print("[green]Keeping the original description.[/green]")
+                else:
+                    console.print(f"[yellow]No description found for {tracker}.[/yellow]")
+
+        except Exception as e:
+            console.print_exception()
+            console.print(f"[yellow]Invalid Response from {tracker} API. Error: {str(e)}[/yellow]")
+
+        if description:  # Ensure description is only printed if it's not None
+            console.print(f"[green]Final description to be returned:[/green] {description}")
+
+        return tmdb, imdb, tvdb, mal, description, category, infohash, imagelist, file_name
 
     async def parseCookieFile(self, cookiefile):
         """Parse a cookies.txt file and return a dictionary of key value pairs
         compatible with requests."""
 
         cookies = {}
-        with open (cookiefile, 'r') as fp:
+        with open(cookiefile, 'r') as fp:
             for line in fp:
                 if not line.startswith(("# ", "\n", "#\n")):
                     lineFields = re.split(' |\t', line.strip())
@@ -185,24 +269,22 @@ class COMMON():
                     cookies[lineFields[5]] = lineFields[6]
         return cookies
 
-
-
     async def ptgen(self, meta, ptgen_site="", ptgen_retry=3):
         ptgen = ""
         url = 'https://ptgen.zhenzhen.workers.dev'
         if ptgen_site != '':
             url = ptgen_site
         params = {}
-        data={}
-        #get douban url
+        data = {}
+        # get douban url
         if int(meta.get('imdb_id', '0')) != 0:
             data['search'] = f"tt{meta['imdb_id']}"
             ptgen = requests.get(url, params=data)
-            if ptgen.json()["error"] != None:
+            if ptgen.json()["error"] is not None:
                 for retry in range(ptgen_retry):
                     try:
                         ptgen = requests.get(url, params=params)
-                        if ptgen.json()["error"] == None:
+                        if ptgen.json()["error"] is None:
                             break
                     except requests.exceptions.JSONDecodeError:
                         continue
@@ -210,20 +292,20 @@ class COMMON():
                 params['url'] = ptgen.json()['data'][0]['link']
             except Exception:
                 console.print("[red]Unable to get data from ptgen using IMDb")
-                params['url'] = console.input(f"[red]Please enter [yellow]Douban[/yellow] link: ")
+                params['url'] = console.input("[red]Please enter [yellow]Douban[/yellow] link: ")
         else:
             console.print("[red]No IMDb id was found.")
-            params['url'] = console.input(f"[red]Please enter [yellow]Douban[/yellow] link: ")
+            params['url'] = console.input("[red]Please enter [yellow]Douban[/yellow] link: ")
         try:
             ptgen = requests.get(url, params=params)
-            if ptgen.json()["error"] != None:
+            if ptgen.json()["error"] is not None:
                 for retry in range(ptgen_retry):
                     ptgen = requests.get(url, params=params)
-                    if ptgen.json()["error"] == None:
+                    if ptgen.json()["error"] is None:
                         break
             ptgen = ptgen.json()
             meta['ptgen'] = ptgen
-            with open (f"{meta['base_dir']}/tmp/{meta['uuid']}/meta.json", 'w') as f:
+            with open(f"{meta['base_dir']}/tmp/{meta['uuid']}/meta.json", 'w') as f:
                 json.dump(meta, f, indent=4)
                 f.close()
             ptgen = ptgen['format']
@@ -237,32 +319,6 @@ class COMMON():
             return ""
         return ptgen
 
-
-
-    # async def ptgen(self, meta):
-    #     ptgen = ""
-    #     url = "https://api.iyuu.cn/App.Movie.Ptgen"
-    #     params = {}
-    #     if int(meta.get('imdb_id', '0')) != 0:
-    #         params['url'] = f"tt{meta['imdb_id']}"
-    #     else:
-    #         console.print("[red]No IMDb id was found.")
-    #         params['url'] = console.input(f"[red]Please enter [yellow]Douban[/yellow] link: ")
-    #     try:
-    #         ptgen = requests.get(url, params=params)
-    #         ptgen = ptgen.json()
-    #         ptgen = ptgen['data']['format']
-    #         if "[/img]" in ptgen:
-    #             ptgen = ptgen.split("[/img]")[1]
-    #         ptgen = f"[img]{meta.get('imdb_info', {}).get('cover', meta.get('cover', ''))}[/img]{ptgen}"
-    #     except:
-    #         console.print_exception()
-    #         console.print("[bold red]There was an error getting the ptgen")
-    #         console.print(ptgen)
-    #     return ptgen
-
-
-
     async def filter_dupes(self, dupes, meta):
         if meta['debug']:
             console.log("[cyan]Pre-filtered dupes")
@@ -275,35 +331,35 @@ class COMMON():
                 remove_set = set({meta['resolution']})
             search_combos = [
                 {
-                    'search' : meta['hdr'],
-                    'search_for' : {'HDR', 'PQ10'},
-                    'update' : {'HDR|PQ10'}
+                    'search': meta['hdr'],
+                    'search_for': {'HDR', 'PQ10'},
+                    'update': {'HDR|PQ10'}
                 },
                 {
-                    'search' : meta['hdr'],
-                    'search_for' : {'DV'},
-                    'update' : {'DV|DoVi'}
+                    'search': meta['hdr'],
+                    'search_for': {'DV'},
+                    'update': {'DV|DoVi'}
                 },
                 {
-                    'search' : meta['hdr'],
-                    'search_not' : {'DV', 'DoVi', 'HDR', 'PQ10'},
-                    'update' : {'!(DV)|(DoVi)|(HDR)|(PQ10)'}
+                    'search': meta['hdr'],
+                    'search_not': {'DV', 'DoVi', 'HDR', 'PQ10'},
+                    'update': {'!(DV)|(DoVi)|(HDR)|(PQ10)'}
                 },
                 {
-                    'search' : str(meta.get('tv_pack', 0)),
-                    'search_for' : '1',
-                    'update' : {f"{meta['season']}(?!E\d+)"}
+                    'search': str(meta.get('tv_pack', 0)),
+                    'search_for': '1',
+                    'update': {rf"{meta['season']}(?!E\d+)"}
                 },
                 {
-                    'search' : meta['episode'],
-                    'search_for' : meta['episode'],
-                    'update' : {meta['season'], meta['episode']}
+                    'search': meta['episode'],
+                    'search_for': meta['episode'],
+                    'update': {meta['season'], meta['episode']}
                 }
             ]
             search_matches = [
                 {
-                    'if' : {'REMUX', 'WEBDL', 'WEBRip', 'HDTV'},
-                    'in' : meta['type']
+                    'if': {'REMUX', 'WEBDL', 'WEBRip', 'HDTV'},
+                    'in': meta['type']
                 }
             ]
             for s in search_combos:
