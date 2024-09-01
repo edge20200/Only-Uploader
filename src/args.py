@@ -171,7 +171,7 @@ class Args():
             return str(list[0])
         try:
             result = " ".join(list)
-        eexcept Exception:
+        except Exception:
             result = "None"
         return result
 
