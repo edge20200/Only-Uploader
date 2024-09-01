@@ -2473,7 +2473,7 @@ class Prep():
                             if response.get('status_code') != 200:
                                 console.print("[yellow]OnlyImage failed, trying next image host")
                                 break
-                            img_url = response['data']['image'])['url']
+                            img_url = response['data']['image']['url']
                             raw_url = img_url
                             web_url = img_url
                         elif img_host == "pixhost":
