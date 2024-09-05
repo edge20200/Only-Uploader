@@ -1,9 +1,11 @@
 # -*- coding: utf-8 -*-
 from src.args import Args
 from src.console import console
-from src.exceptions import * # noqa: F403
+from src.exceptions import *  # noqa: F403
 from src.trackers.PTP import PTP
 from src.trackers.BLU import BLU
+from src.trackers.AITHER import AITHER
+from src.trackers.LST import LST
 from src.trackers.HDB import HDB
 from src.trackers.COMMON import COMMON
 
@@ -42,6 +44,9 @@ try:
     import cli_ui
     from rich.progress import Progress, TextColumn, BarColumn, TimeRemainingColumn
     import platform
+    import aiohttp
+    from PIL import Image
+    import io
 except ModuleNotFoundError:
     console.print(traceback.print_exc())
     console.print('[bold red]Missing Module Found. Please reinstall required dependancies.')
@@ -65,155 +70,174 @@ class Prep():
         self.img_host = img_host.lower()
         tmdb.API_KEY = config['DEFAULT']['tmdb_api']
 
-    async def prompt_user_for_id_selection(self, blu_tmdb=None, blu_imdb=None, blu_tvdb=None, blu_filename=None, imdb=None):
-        if imdb:
-            imdb = str(imdb).zfill(7)  # Convert to string and ensure IMDb ID is 7 characters long by adding leading zeros
-            console.print(f"[cyan]Found IMDb ID: https://www.imdb.com/title/tt{imdb}")
-        if blu_tmdb or blu_imdb or blu_tvdb:
-            if blu_imdb:
-                blu_imdb = str(blu_imdb).zfill(7)  # Convert to string and ensure IMDb ID is 7 characters long by adding leading zeros
-            console.print("[cyan]Found the following IDs on BLU:")
-            console.print(f"TMDb ID: {blu_tmdb}")
-            console.print(f"IMDb ID: https://www.imdb.com/title/tt{blu_imdb}")
-            console.print(f"TVDb ID: {blu_tvdb}")
-            console.print(f"Filename: {blu_filename}")
-
-        selection = input("Do you want to use this ID? (y/n): ").strip().lower()
-        return selection == 'y'
-
     async def prompt_user_for_confirmation(self, message):
-        selection = input(f"{message} (y/n): ").strip().lower()
-        return selection == 'y'
+        response = input(f"{message} (Y/n): ").strip().lower()
+        if response == '' or response == 'y':
+            return True
+        return False
+
+    async def check_images_concurrently(self, imagelist):
+        async def check_and_collect(image_dict):
+            img_url = image_dict.get('img_url') or image_dict.get('raw_url')
+            if img_url and await self.check_image_link(img_url):
+                return image_dict
+            else:
+                console.print(f"[yellow]Image link failed verification and will be skipped: {img_url}[/yellow]")
+                return None
+
+        tasks = [check_and_collect(image_dict) for image_dict in imagelist]
+        results = await asyncio.gather(*tasks)
+        return [image for image in results if image is not None]
+
+    async def check_image_link(self, url):
+        async with aiohttp.ClientSession() as session:
+            try:
+                async with session.get(url) as response:
+                    if response.status == 200:
+                        content_type = response.headers.get('Content-Type', '').lower()
+                        if 'image' in content_type:
+                            # Attempt to load the image
+                            image_data = await response.read()
+                            try:
+                                image = Image.open(io.BytesIO(image_data))
+                                image.verify()  # This will check if the image is broken
+                                console.print(f"[green]Image verified successfully: {url}[/green]")
+                                return True
+                            except (IOError, SyntaxError) as e:  # noqa #F841
+                                console.print(f"[red]Image verification failed (corrupt image): {url}[/red]")
+                                return False
+                        else:
+                            console.print(f"[red]Content type is not an image: {url}[/red]")
+                            return False
+                    else:
+                        console.print(f"[red]Failed to retrieve image: {url} (status code: {response.status})[/red]")
+                        return False
+            except Exception as e:
+                console.print(f"[red]Exception occurred while checking image: {url} - {str(e)}[/red]")
+                return False
+
+    async def update_meta_with_unit3d_data(self, meta, tracker_data, tracker_name):
+        # Unpack the expected 9 elements, ignoring any additional ones
+        tmdb, imdb, tvdb, mal, desc, category, infohash, imagelist, filename, *rest = tracker_data
+
+        if tmdb not in [None, '0']:
+            meta['tmdb'] = tmdb
+        if imdb not in [None, '0']:
+            meta['imdb'] = str(imdb).zfill(7)
+        if tvdb not in [None, '0']:
+            meta['tvdb_id'] = tvdb
+        if mal not in [None, '0']:
+            meta['mal'] = mal
+        if desc not in [None, '0', '']:
+            meta[f'{tracker_name.lower()}_desc'] = desc
+        if category.upper() in ['MOVIE', 'TV SHOW', 'FANRES']:
+            meta['category'] = 'TV' if category.upper() == 'TV SHOW' else category.upper()
+
+        if not meta.get('image_list'):  # Only handle images if image_list is not already populated
+            if imagelist:  # Ensure imagelist is not empty before setting
+                valid_images = await self.check_images_concurrently(imagelist)
+                if valid_images:
+                    meta['image_list'] = valid_images
+                    if meta.get('image_list'):  # Double-check if image_list is set before handling it
+                        await self.handle_image_list(meta, tracker_name)
+
+        if filename:
+            meta[f'{tracker_name.lower()}_filename'] = filename
+
+        console.print(f"[green]{tracker_name} data successfully updated in meta[/green]")
 
     async def update_metadata_from_tracker(self, tracker_name, tracker_instance, meta, search_term, search_file_folder):
         tracker_key = tracker_name.lower()
         manual_key = f"{tracker_key}_manual"
         found_match = False
 
-        # console.print(f"[cyan]Starting update_metadata_from_tracker for: {tracker_name}[/cyan]")
-
-        # Handle each tracker separately
-        if tracker_name == "BLU":
-            # console.print(f"[blue]Handling BLU tracker[/blue]")
+        if tracker_name in ["BLU", "AITHER", "LST"]:  # Example for UNIT3D trackers
             if meta.get(tracker_key) is not None:
                 console.print(f"[cyan]{tracker_name} ID found in meta, reusing existing ID: {meta[tracker_key]}[/cyan]")
-                blu_tmdb, blu_imdb, blu_tvdb, blu_mal, blu_desc, blu_category, meta['ext_torrenthash'], blu_imagelist, blu_filename = await COMMON(self.config).unit3d_torrent_info(
-                    "BLU",
+                tracker_data = await COMMON(self.config).unit3d_torrent_info(
+                    tracker_name,
                     tracker_instance.torrent_url,
                     tracker_instance.search_url,
                     id=meta[tracker_key]
                 )
-                # console.print(f"[blue]BLU search by ID complete[/blue]")
-                if blu_tmdb not in [None, '0'] or blu_imdb not in [None, '0'] or blu_tvdb not in [None, '0']:
-                    console.print(f"[green]Valid data found on {tracker_name}, setting meta values[/green]")
-                    if await self.prompt_user_for_id_selection(blu_tmdb, blu_imdb, blu_tvdb, blu_filename):
-                        if blu_tmdb not in [None, '0']:
-                            meta['tmdb_manual'] = blu_tmdb
-                        if blu_imdb not in [None, '0']:
-                            meta['imdb'] = str(blu_imdb).zfill(7)  # Pad IMDb ID with leading zeros
-                        if blu_tvdb not in [None, '0']:
-                            meta['tvdb_id'] = blu_tvdb
-                        if blu_mal not in [None, '0']:
-                            meta['mal'] = blu_mal
-                        if blu_desc not in [None, '0', '']:
-                            meta['blu_desc'] = blu_desc
-                        if blu_category.upper() in ['MOVIE', 'TV SHOW', 'FANRES']:
-                            meta['category'] = 'TV' if blu_category.upper() == 'TV SHOW' else blu_category.upper()
-                        if not meta.get('image_list'): # Only handle images if image_list is not already populated
-                            if blu_imagelist:  # Ensure blu_imagelist is not empty before setting
-                                meta['image_list'] = blu_imagelist
-                                if meta.get('image_list'):  # Double-check if image_list is set before handling it
-                                    await self.handle_image_list(meta, tracker_name)
-                        if blu_filename:
-                            meta['blu_filename'] = blu_filename  # Store the filename in meta for later use
-                        found_match = True
-                        console.print("[green]BLU data successfully updated in meta[/green]")
-                    else:
-                        console.print(f"[yellow]Skipped {tracker_name}, moving to the next site.[/yellow]")
-                else:
-                    console.print(f"[yellow]No valid data found on {tracker_name}[/yellow]")
             else:
-                console.print("[yellow]No ID found in meta for BLU, searching by file name[/yellow]")
-                blu_tmdb, blu_imdb, blu_tvdb, blu_mal, blu_desc, blu_category, meta['ext_torrenthash'], blu_imagelist, blu_filename = await COMMON(self.config).unit3d_torrent_info(
-                    "BLU",
+                console.print(f"[yellow]No ID found in meta for {tracker_name}, searching by file name[/yellow]")
+                tracker_data = await COMMON(self.config).unit3d_torrent_info(
+                    tracker_name,
                     tracker_instance.torrent_url,
                     tracker_instance.search_url,
                     file_name=search_term
                 )
-                # console.print(f"[blue]BLU search by file name complete[/blue]")
-                if blu_tmdb not in [None, '0'] or blu_imdb not in [None, '0'] or blu_tvdb not in [None, '0']:
-                    console.print(f"[green]Valid data found on {tracker_name} using file name, setting meta values[/green]")
-                    if await self.prompt_user_for_id_selection(blu_tmdb, blu_imdb, blu_tvdb, blu_filename):
-                        if blu_tmdb not in [None, '0']:
-                            meta['tmdb_manual'] = blu_tmdb
-                        if blu_imdb not in [None, '0']:
-                            meta['imdb'] = str(blu_imdb).zfill(7)
-                        if blu_tvdb not in [None, '0']:
-                            meta['tvdb_id'] = blu_tvdb
-                        if blu_mal not in [None, '0']:
-                            meta['mal'] = blu_mal
-                        if blu_desc not in [None, '0', '']:
-                            meta['blu_desc'] = blu_desc
-                        if blu_category.upper() in ['MOVIE', 'TV SHOW', 'FANRES']:
-                            meta['category'] = 'TV' if blu_category.upper() == 'TV SHOW' else blu_category.upper()
-                        if not meta.get('image_list'):  # Only handle images if image_list is not already populated
-                            if blu_imagelist:  # Ensure blu_imagelist is not empty before setting
-                                meta['image_list'] = blu_imagelist
-                                if meta.get('image_list'):  # Double-check if image_list is set before handling it
-                                    await self.handle_image_list(meta, tracker_name)
-                        if blu_filename:
-                            meta['blu_filename'] = blu_filename
-                        found_match = True
-                        console.print("[green]BLU data successfully updated in meta[/green]")
-                    else:
-                        console.print(f"[yellow]Skipped {tracker_name}, moving to the next site.[/yellow]")
-                else:
-                    console.print(f"[yellow]No valid data found on {tracker_name}[/yellow]")
+
+            if any(item not in [None, '0'] for item in tracker_data[:3]):  # Check for valid tmdb, imdb, or tvdb
+                console.print(f"[green]Valid data found on {tracker_name}, setting meta values[/green]")
+                await self.update_meta_with_unit3d_data(meta, tracker_data, tracker_name)
+                found_match = True
+            else:
+                console.print(f"[yellow]No valid data found on {tracker_name}[/yellow]")
+                found_match = False
 
         elif tracker_name == "PTP":
-            # console.print(f"[blue]Handling PTP tracker[/blue]")
-
+            imdb_id = None  # Ensure imdb_id is defined
+            # Check if the PTP ID is already in meta
             if meta.get('ptp') is None:
-                # console.print(f"[yellow]No PTP ID in meta, searching by search term[/yellow]")
-                imdb, ptp_torrent_id, meta['ext_torrenthash'] = await tracker_instance.get_ptp_id_imdb(search_term, search_file_folder)
+                # No PTP ID in meta, search by search term
+                imdb_id, ptp_torrent_id, ptp_torrent_hash = await tracker_instance.get_ptp_id_imdb(search_term, search_file_folder, meta)
                 if ptp_torrent_id:
                     meta['ptp'] = ptp_torrent_id
-                    meta['imdb'] = str(imdb).zfill(7) if imdb else None
+                    meta['imdb'] = str(imdb_id).zfill(7) if imdb_id else None
+
+                    console.print(f"[green]{tracker_name} IMDb ID found: tt{meta['imdb']}[/green]")
+                    if await self.prompt_user_for_confirmation("Do you want to use this ID data from PTP?"):
+                        meta['skip_gen_desc'] = True
+                        found_match = True
+
+                        # Retrieve PTP description and image list
+                        ptp_desc, ptp_imagelist = await tracker_instance.get_ptp_description(ptp_torrent_id, meta.get('is_disc', False))
+                        meta['description'] = ptp_desc
+
+                        if not meta.get('image_list'):  # Only handle images if image_list is not already populated
+                            valid_images = await self.check_images_concurrently(ptp_imagelist)
+                            if valid_images:
+                                meta['image_list'] = valid_images
+                                await self.handle_image_list(meta, tracker_name)
+
+                        meta['skip_gen_desc'] = True
+                        console.print("[green]PTP images added to metadata.[/green]")
+
+                    else:
+                        found_match = False
+                        meta['skip_gen_desc'] = True
+                        meta['description'] = None
+
+                else:
+                    console.print("[yellow]Skipping PTP as no match found[/yellow]")
+                    found_match = False
+                    meta['skip_gen_desc'] = True
+                    meta['description'] = None
             else:
                 ptp_torrent_id = meta['ptp']
                 console.print(f"[cyan]PTP ID found in meta: {ptp_torrent_id}, using it to get IMDb ID[/cyan]")
-                imdb, _, meta['ext_torrenthash'] = await tracker_instance.get_imdb_from_torrent_id(ptp_torrent_id)
-                if imdb:
-                    meta['imdb'] = str(imdb).zfill(7)
+                imdb_id, _, meta['ext_torrenthash'] = await tracker_instance.get_imdb_from_torrent_id(ptp_torrent_id)
+                if imdb_id:
+                    meta['imdb'] = str(imdb_id).zfill(7)
                     console.print(f"[green]IMDb ID found: tt{meta['imdb']}[/green]")
                 else:
                     console.print(f"[yellow]Could not find IMDb ID using PTP ID: {ptp_torrent_id}[/yellow]")
+                    found_match = False
 
-            if meta.get('imdb') and await self.prompt_user_for_id_selection(imdb=meta['imdb']):
-                console.print(f"[green]{tracker_name} IMDb ID found: tt{meta['imdb']}[/green]")
-                found_match = True
-
+                # Retrieve PTP description and image list
                 ptp_desc, ptp_imagelist = await tracker_instance.get_ptp_description(meta['ptp'], meta.get('is_disc', False))
-                if ptp_desc.strip():
-                    meta['description'] = ptp_desc
-                    if not meta.get('image_list'):  # Only handle images if image_list is not already populated
-                        meta['image_list'] = ptp_imagelist
-                        if meta.get('image_list'):
-                            await self.handle_image_list(meta, tracker_name)
-                    meta['skip_gen_desc'] = True
-                    console.print("[green]PTP description and images added to metadata.[/green]")
+                meta['description'] = ptp_desc
 
-                    if await self.prompt_user_for_confirmation("Do you want to keep the description from PTP?"):
-                        meta['skip_gen_desc'] = True
-                        found_match = True
-                    else:
-                        console.print("[yellow]Description discarded from PTP[/yellow]")
-                        meta['skip_gen_desc'] = True
-                        meta['description'] = None
-            else:
-                console.print(f"[yellow]Skipped {tracker_name}, moving to the next site.[/yellow]")
+                if not meta.get('image_list'):  # Only handle images if image_list is not already populated
+                    valid_images = await self.check_images_concurrently(ptp_imagelist)
+                    if valid_images:
+                        meta['image_list'] = valid_images
+                        await self.handle_image_list(meta, tracker_name)
+
                 meta['skip_gen_desc'] = True
-                return meta, found_match
+                console.print("[green]PTP images added to metadata.[/green]")
 
         elif tracker_name == "HDB":
             if meta.get('hdb') is not None:
@@ -227,11 +251,13 @@ class Prep():
                 meta['hdb_name'] = hdb_name
                 found_match = True
 
+                # Skip user confirmation if searching by ID
+                console.print(f"[green]{tracker_name} data found: IMDb ID: {imdb}, TVDb ID: {meta['tvdb_id']}, HDB Name: {meta['hdb_name']}[/green]")
             else:
                 console.print("[yellow]No ID found in meta for HDB, searching by file name[/yellow]")
 
                 # Use search_filename function if ID is not found in meta
-                imdb, tvdb_id, hdb_name, meta['ext_torrenthash'], tracker_id = await tracker_instance.search_filename(search_term, search_file_folder)
+                imdb, tvdb_id, hdb_name, meta['ext_torrenthash'], tracker_id = await tracker_instance.search_filename(search_term, search_file_folder, meta)
 
                 meta['tvdb_id'] = str(tvdb_id) if tvdb_id else meta.get('tvdb_id')
                 meta['hdb_name'] = hdb_name
@@ -239,22 +265,20 @@ class Prep():
                     meta[tracker_key] = tracker_id
                 found_match = True
 
-            if found_match:
-                if imdb or tvdb_id or hdb_name:
-                    console.print(f"[green]{tracker_name} data found: IMDb ID: {imdb}, TVDb ID: {meta['tvdb_id']}, HDB Name: {meta['hdb_name']}[/green]")
-                    if await self.prompt_user_for_confirmation(f"Do you want to keep the data found on {tracker_name}?"):
-                        console.print(f"[green]{tracker_name} data retained.[/green]")
+                if found_match:
+                    if imdb or tvdb_id or hdb_name:
+                        console.print(f"[green]{tracker_name} data found: IMDb ID: {imdb}, TVDb ID: {meta['tvdb_id']}, HDB Name: {meta['hdb_name']}[/green]")
+                        if await self.prompt_user_for_confirmation(f"Do you want to use the ID's found on {tracker_name}?"):
+                            console.print(f"[green]{tracker_name} data retained.[/green]")
+                        else:
+                            console.print(f"[yellow]{tracker_name} data discarded.[/yellow]")
+                            meta[tracker_key] = None
+                            meta['tvdb_id'] = None
+                            meta['hdb_name'] = None
+                            found_match = False
                     else:
-                        console.print(f"[yellow]{tracker_name} data discarded.[/yellow]")
-                        meta[tracker_key] = None
-                        meta['tvdb_id'] = None
-                        meta['hdb_name'] = None
                         found_match = False
-                else:
-                    # console.print(f"[yellow]Could not find a matching release on {tracker_name}.[/yellow]")
-                    found_match = False
-        
-        # console.print(f"[cyan]Finished processing tracker: {tracker_name} with found_match: {found_match}[/cyan]")
+
         return meta, found_match
 
     async def handle_image_list(self, meta, tracker_name):
@@ -262,12 +286,21 @@ class Prep():
             console.print(f"[cyan]Found the following images from {tracker_name}:")
             for img in meta['image_list']:
                 console.print(f"[blue]{img}[/blue]")
+
+            approved_image_hosts = ['ptpimg', 'imgbox']
+
+            # Check if the images are already hosted on an approved image host
+            if all(any(host in img for host in approved_image_hosts) for img in meta['image_list']):
+                image_list = meta['image_list']  # noqa #F841
+            else:
+                console.print("[red]Warning: Some images are not hosted on an MTV approved image host. MTV will fail if you keep these images.")
+
             keep_images = await self.prompt_user_for_confirmation(f"Do you want to keep the images found on {tracker_name}?")
             if not keep_images:
                 meta['image_list'] = []
-                console.print(f"[yellow]Images discarded from {tracker_name}")
+                console.print(f"[yellow]Images discarded from {tracker_name}.")
             else:
-                console.print(f"[green]Images retained from {tracker_name}")
+                console.print(f"[green]Images retained from {tracker_name}.")
 
     async def gather_prep(self, meta, mode):
         meta['mode'] = mode
@@ -396,35 +429,76 @@ class Prep():
         found_match = False
 
         if search_term:
-            # console.print(f"[blue]Starting search with search_term: {search_term}[/blue]")
-            default_trackers = self.config['TRACKERS'].get('default_trackers', "").split(", ")
+            # Check if specific trackers are already set in meta
+            specific_tracker = None
+            if meta.get('ptp'):
+                specific_tracker = 'PTP'
+            elif meta.get('hdb'):
+                specific_tracker = 'HDB'
+            elif meta.get('blu'):
+                specific_tracker = 'BLU'
+            elif meta.get('aither'):
+                specific_tracker = 'AITHER'
+            elif meta.get('lst'):
+                specific_tracker = 'LST'
 
-            if "PTP" in default_trackers and not found_match:
-                if str(self.config['TRACKERS'].get('PTP', {}).get('useAPI')).lower() == "true":
-                    # console.print(f"[blue]Searching PTP for: {search_term}[/blue]")
+            # If a specific tracker is found, only process that one
+            if specific_tracker:
+                console.print(f"[blue]Processing only the {specific_tracker} tracker based on meta.[/blue]")
+
+                if specific_tracker == 'PTP' and str(self.config['TRACKERS'].get('PTP', {}).get('useAPI')).lower() == "true":
                     ptp = PTP(config=self.config)
                     meta, match = await self.update_metadata_from_tracker('PTP', ptp, meta, search_term, search_file_folder)
                     if match:
                         found_match = True
-                        # console.print(f"[blue]PTP search complete, found_match: {found_match}[/blue]")
 
-            if "HDB" in default_trackers and not found_match:
-                if str(self.config['TRACKERS'].get('HDB', {}).get('useAPI')).lower() == "true":
-                    # console.print(f"[blue]Searching HDB for: {search_term}[/blue]")
-                    hdb = HDB(config=self.config)
-                    meta, match = await self.update_metadata_from_tracker('HDB', hdb, meta, search_term, search_file_folder)
-                    if match:
-                        found_match = True
-                        # console.print(f"[blue]HDB search complete, found_match: {found_match}[/blue]")
-
-            if "BLU" in default_trackers and not found_match:
-                if str(self.config['TRACKERS'].get('BLU', {}).get('useAPI')).lower() == "true":
-                    # console.print(f"[blue]Searching BLU for: {search_term}[/blue]")
+                elif specific_tracker == 'BLU' and str(self.config['TRACKERS'].get('BLU', {}).get('useAPI')).lower() == "true":
                     blu = BLU(config=self.config)
                     meta, match = await self.update_metadata_from_tracker('BLU', blu, meta, search_term, search_file_folder)
                     if match:
                         found_match = True
-                        # console.print(f"[blue]BLU search complete, found_match: {found_match}[/blue]")
+
+                elif specific_tracker == 'AITHER' and str(self.config['TRACKERS'].get('AITHER', {}).get('useAPI')).lower() == "true":
+                    aither = AITHER(config=self.config)
+                    meta, match = await self.update_metadata_from_tracker('AITHER', aither, meta, search_term, search_file_folder)
+                    if match:
+                        found_match = True
+
+                elif specific_tracker == 'LST' and str(self.config['TRACKERS'].get('LST', {}).get('useAPI')).lower() == "true":
+                    lst = LST(config=self.config)
+                    meta, match = await self.update_metadata_from_tracker('LST', lst, meta, search_term, search_file_folder)
+                    if match:
+                        found_match = True
+
+                elif specific_tracker == 'HDB' and str(self.config['TRACKERS'].get('HDB', {}).get('useAPI')).lower() == "true":
+                    hdb = HDB(config=self.config)
+                    meta, match = await self.update_metadata_from_tracker('HDB', hdb, meta, search_term, search_file_folder)
+                    if match:
+                        found_match = True
+            else:
+                # Process all trackers if no specific tracker is set in meta
+                default_trackers = self.config['TRACKERS'].get('default_trackers', "").split(", ")
+
+                if "PTP" in default_trackers and not found_match:
+                    if str(self.config['TRACKERS'].get('PTP', {}).get('useAPI')).lower() == "true":
+                        ptp = PTP(config=self.config)
+                        meta, match = await self.update_metadata_from_tracker('PTP', ptp, meta, search_term, search_file_folder)
+                        if match:
+                            found_match = True
+
+                if "BLU" in default_trackers and not found_match:
+                    if str(self.config['TRACKERS'].get('BLU', {}).get('useAPI')).lower() == "true":
+                        blu = BLU(config=self.config)
+                        meta, match = await self.update_metadata_from_tracker('BLU', blu, meta, search_term, search_file_folder)
+                        if match:
+                            found_match = True
+
+                if "HDB" in default_trackers and not found_match:
+                    if str(self.config['TRACKERS'].get('HDB', {}).get('useAPI')).lower() == "true":
+                        hdb = HDB(config=self.config)
+                        meta, match = await self.update_metadata_from_tracker('HDB', hdb, meta, search_term, search_file_folder)
+                        if match:
+                            found_match = True
 
             if not found_match:
                 console.print("[yellow]No matches found on any trackers.[/yellow]")
@@ -1000,7 +1074,7 @@ class Prep():
                             self.optimize_images(image)
                             if os.path.getsize(Path(image)) <= 31000000 and self.img_host == "imgbb":
                                 i += 1
-                            elif os.path.getsize(Path(image)) <= 10000000 and self.img_host in ["imgbox", 'pixhost']:
+                            elif os.path.getsize(Path(image)) <= 10000000 and self.img_host in ["imgbox", 'pixhost', 'oeimg']:
                                 i += 1
                             elif os.path.getsize(Path(image)) <= 75000:
                                 console.print("[bold yellow]Image is incredibly small, retaking")
@@ -1032,7 +1106,7 @@ class Prep():
         sar = 1
         for track in ifo_mi.tracks:
             if track.track_type == "Video":
-                length = float(track.duration)/1000 # noqa F841
+                length = float(track.duration)/1000  # noqa F841
                 par = float(track.pixel_aspect_ratio)
                 dar = float(track.display_aspect_ratio)
                 width = float(track.width)
@@ -1133,7 +1207,7 @@ class Prep():
                         try:
                             if os.path.getsize(Path(image)) <= 31000000 and self.img_host == "imgbb":
                                 i += 1
-                            elif os.path.getsize(Path(image)) <= 10000000 and self.img_host in ["imgbox", 'pixhost']:
+                            elif os.path.getsize(Path(image)) <= 10000000 and self.img_host in ["imgbox", 'pixhost', 'oeimg']:
                                 i += 1
                             elif os.path.getsize(Path(image)) <= 75000:
                                 console.print("[yellow]Image is incredibly small (and is most likely to be a single color), retaking")
@@ -1942,7 +2016,7 @@ class Prep():
                         if track.track_type == "Video":
                             system = track.standard
                     if system not in ("PAL", "NTSC"):
-                        raise WeirdSystem # noqa: F405
+                        raise WeirdSystem  # noqa: F405
                 except Exception:
                     try:
                         other = guessit(video)['other']
@@ -2386,6 +2460,8 @@ class Prep():
     Upload Screenshots
     """
     def upload_screens(self, meta, screens, img_host_num, i, total_screens, custom_img_list, return_dict, retry_mode=False):
+        import nest_asyncio
+        nest_asyncio.apply()
         os.chdir(f"{meta['base_dir']}/tmp/{meta['uuid']}")
         initial_img_host = self.config['DEFAULT'][f'img_host_{img_host_num}']
         img_host = meta['imghost']  # Use the correctly updated image host from meta
@@ -2401,161 +2477,188 @@ class Prep():
                 image_glob.remove('POSTER.png')
             existing_images = meta.get('image_list', [])
 
-        # Only skip uploading if retry_mode is False and the hosts match
         if len(existing_images) >= total_screens and not retry_mode and img_host == initial_img_host:
             console.print(f"[yellow]Skipping upload because images are already uploaded to {img_host}. Existing images: {len(existing_images)}, Required: {total_screens}")
             return existing_images, total_screens
 
-        # Initialize the progress bar outside of the retry loop
-        with Progress(
-            TextColumn("[bold green]Uploading Screens..."),
-            BarColumn(),
-            "[cyan]{task.completed}/{task.total}",
-            TimeRemainingColumn()
-        ) as progress:
-            while True:
-                upload_task = progress.add_task(f"[green]Uploading Screens to {img_host}...", total=len(image_glob[-screens:]))
+        if img_host == "imgbox":
+            # Handle Imgbox uploads without the main progress bar
+            console.print("[green]Uploading Screens to Imgbox...")
+            image_list = asyncio.run(self.imgbox_upload(f"{meta['base_dir']}/tmp/{meta['uuid']}", image_glob))
+            if not image_list:
+                console.print("[yellow]Imgbox failed, trying next image host")
+                img_host_num += 1
+                img_host = self.config['DEFAULT'].get(f'img_host_{img_host_num}')
+                if not img_host:
+                    console.print("[red]All image hosts failed. Unable to complete uploads.")
+                    return image_list, i
+            else:
+                return image_list, i  # Return after successful Imgbox upload
+        else:
+            with Progress(
+                TextColumn("[bold green]Uploading Screens..."),
+                BarColumn(),
+                "[cyan]{task.completed}/{task.total}",
+                TimeRemainingColumn()
+            ) as progress:
+                while True:
+                    upload_task = progress.add_task(f"[green]Uploading Screens to {img_host}...", total=len(image_glob[-screens:]))
 
-                for image in image_glob[-screens:]:
-                    try:
-                        timeout = 60
-                        if img_host == "ptpimg":
-                            payload = {
-                                'format': 'json',
-                                'api_key': self.config['DEFAULT']['ptpimg_api']
-                            }
-                            files = [('file-upload[0]', open(image, 'rb'))]
-                            headers = {'referer': 'https://ptpimg.me/index.php'}
-                            response = requests.post("https://ptpimg.me/upload.php", headers=headers, data=payload, files=files)
-                            response = response.json()
-                            ptpimg_code = response[0]['code']
-                            ptpimg_ext = response[0]['ext']
-                            img_url = f"https://ptpimg.me/{ptpimg_code}.{ptpimg_ext}"
-                            raw_url = img_url
-                            web_url = img_url
-                        elif img_host == "imgbb":
-                            url = "https://api.imgbb.com/1/upload"
-                            data = {
-                                'key': self.config['DEFAULT']['imgbb_api'],
-                                'image': base64.b64encode(open(image, "rb").read()).decode('utf8')
-                            }
-                            response = requests.post(url, data=data, timeout=timeout)
-                            response = response.json()
-                            img_url = response['data']['image']['url']
-                            raw_url = img_url
-                            web_url = img_url
-                        elif img_host == "ptscreens":
-                            url = "https://ptscreens.com/api/1/upload"
-                            data = {
-                                'image': base64.b64encode(open(image, "rb").read()).decode('utf8')
-                            }
-                            headers = {
-                                'X-API-Key': self.config['DEFAULT']['ptscreens_api'],
-                            }
-                            response = requests.post(url, data=data, headers=headers, timeout=timeout)
-                            response = response.json()
-                            if response.get('status_code') != 200:
-                                console.print("[yellow]PT Screens failed, trying next image host")
+                    for image in image_glob[-screens:]:
+                        try:
+                            timeout = 60
+                            if img_host == "ptpimg":
+                                payload = {
+                                    'format': 'json',
+                                    'api_key': self.config['DEFAULT']['ptpimg_api']
+                                }
+                                files = [('file-upload[0]', open(image, 'rb'))]
+                                headers = {'referer': 'https://ptpimg.me/index.php'}
+                                response = requests.post("https://ptpimg.me/upload.php", headers=headers, data=payload, files=files)
+                                response = response.json()
+                                ptpimg_code = response[0]['code']
+                                ptpimg_ext = response[0]['ext']
+                                img_url = f"https://ptpimg.me/{ptpimg_code}.{ptpimg_ext}"
+                                raw_url = img_url
+                                web_url = img_url
+                            elif img_host == "imgbb":
+                                url = "https://api.imgbb.com/1/upload"
+                                data = {
+                                    'key': self.config['DEFAULT']['imgbb_api'],
+                                    'image': base64.b64encode(open(image, "rb").read()).decode('utf8')
+                                }
+                                response = requests.post(url, data=data, timeout=timeout)
+                                response = response.json()
+                                img_url = response['data']['image']['url']
+                                raw_url = img_url
+                                web_url = img_url
+                            elif img_host == "ptscreens":
+                                url = "https://ptscreens.com/api/1/upload"
+                                data = {
+                                    'image': base64.b64encode(open(image, "rb").read()).decode('utf8')
+                                }
+                                headers = {
+                                    'X-API-Key': self.config['DEFAULT']['ptscreens_api'],
+                                }
+                                response = requests.post(url, data=data, headers=headers, timeout=timeout)
+                                response = response.json()
+                                if response.get('status_code') != 200:
+                                    console.print("[yellow]PT Screens failed, trying next image host")
+                                    break
+                                img_url = response['data']['image']['url']
+                                raw_url = img_url
+                                web_url = img_url
+                            elif img_host == "oeimg":
+                                url = "https://imgoe.download/api/1/upload"
+                                data = {
+                                    'image': base64.b64encode(open(image, "rb").read()).decode('utf8')
+                                }
+                                headers = {
+                                    'X-API-Key': self.config['DEFAULT']['oeimg_api'],
+                                }
+                                response = requests.post(url, data=data, headers=headers, timeout=timeout)
+                                response = response.json()
+                                if response.get('status_code') != 200:
+                                    console.print("[yellow]OnlyImage failed, trying next image host")
+                                    break
+                                img_url = response['data']['image']['url']
+                                raw_url = img_url
+                                web_url = img_url
+                            elif img_host == "pixhost":
+                                url = "https://api.pixhost.to/images"
+                                data = {
+                                    'content_type': '0',
+                                    'max_th_size': 350,
+                                }
+                                files = {
+                                    'img': ('file-upload[0]', open(image, 'rb')),
+                                }
+                                response = requests.post(url, data=data, files=files, timeout=timeout)
+                                if response.status_code != 200:
+                                    console.print("[yellow]Pixhost failed, trying next image host")
+                                    break
+                                response = response.json()
+                                raw_url = response['th_url'].replace('https://t', 'https://img').replace('/thumbs/', '/images/')
+                                img_url = response['th_url']
+                                web_url = response['show_url']
+                            elif img_host == "lensdump":
+                                url = "https://lensdump.com/api/1/upload"
+                                data = {
+                                    'image': base64.b64encode(open(image, "rb").read()).decode('utf8')
+                                }
+                                headers = {
+                                    'X-API-Key': self.config['DEFAULT']['lensdump_api'],
+                                }
+                                response = requests.post(url, data=data, headers=headers, timeout=timeout)
+                                response = response.json()
+                                if response.get('status_code') != 200:
+                                    console.print("[yellow]Lensdump failed, trying next image host")
+                                    break
+                                img_url = response['data']['image']['url']
+                                raw_url = img_url
+                                web_url = response['data']['url_viewer']
+                            else:
+                                console.print(f"[red]Unsupported image host: {img_host}")
                                 break
-                            img_url = response['data']['image']['url']
-                            raw_url = img_url
-                            web_url = img_url
-                        elif img_host == "oeimg":
-                            url = "https://imgoe.download/api/1/upload"
-                            data = {
-                                'image': base64.b64encode(open(image, "rb").read()).decode('utf8')
-                            }
-                            headers = {
-                                'X-API-Key': self.config['DEFAULT']['oeimg_api'],
-                            }
-                            response = requests.post(url, data=data, headers=headers, timeout=timeout)
-                            response = response.json()
-                            if response.get('status_code') != 200:
-                                console.print("[yellow]OnlyImage failed, trying next image host")
-                                break
-                            img_url = response['data']['image']['url']
-                            raw_url = img_url
-                            web_url = img_url
-                        elif img_host == "pixhost":
-                            url = "https://api.pixhost.to/images"
-                            data = {
-                                'content_type': '0',
-                                'max_th_size': 350,
-                            }
-                            files = {
-                                'img': ('file-upload[0]', open(image, 'rb')),
-                            }
-                            response = requests.post(url, data=data, files=files, timeout=timeout)
-                            if response.status_code != 200:
-                                console.print("[yellow]Pixhost failed, trying next image host")
-                                break
-                            response = response.json()
-                            raw_url = response['th_url'].replace('https://t', 'https://img').replace('/thumbs/', '/images/')
-                            img_url = response['th_url']
-                            web_url = response['show_url']
-                        elif img_host == "lensdump":
-                            url = "https://lensdump.com/api/1/upload"
-                            data = {
-                                'image': base64.b64encode(open(image, "rb").read()).decode('utf8')
-                            }
-                            headers = {
-                                'X-API-Key': self.config['DEFAULT']['lensdump_api'],
-                            }
-                            response = requests.post(url, data=data, headers=headers, timeout=timeout)
-                            response = response.json()
-                            if response.get('status_code') != 200:
-                                console.print("[yellow]Lensdump failed, trying next image host")
-                                break
-                            img_url = response['data']['image']['url']
-                            raw_url = img_url
-                            web_url = response['data']['url_viewer']
-                        else:
-                            console.print(f"[red]Unsupported image host: {img_host}")
+
+                            # Update progress bar and print the result on the same line
+                            progress.console.print(f"[cyan]Uploaded image {i + 1}/{total_screens}: {raw_url}", end='\r')
+
+                            # Add the image details to the list
+                            image_dict = {'img_url': img_url, 'raw_url': raw_url, 'web_url': web_url}
+                            image_list.append(image_dict)
+                            progress.advance(upload_task)
+                            i += 1
+
+                        except Exception as e:
+                            console.print(f"[yellow]Failed to upload {image} to {img_host}. Exception: {str(e)}")
                             break
 
-                        # Update progress bar and print the result on the same line
-                        progress.console.print(f"[cyan]Uploaded image {i+1}/{total_screens}: {raw_url}", end='\r')
+                        time.sleep(0.5)
 
-                        # Add the image details to the list
-                        image_dict = {'img_url': img_url, 'raw_url': raw_url, 'web_url': web_url}
-                        image_list.append(image_dict)
-                        progress.advance(upload_task)
-                        i += 1
+                        if i >= total_screens:
+                            return_dict['image_list'] = image_list
+                            console.print(f"\n[cyan]Completed uploading images. Total uploaded: {len(image_list)}")
+                            return image_list, i
 
-                    except Exception as e:
-                        console.print(f"[yellow]Failed to upload {image} to {img_host}. Exception: {str(e)}")
-                        break
-
-                    time.sleep(0.5)
-
-                    if i >= total_screens:
-                        return_dict['image_list'] = image_list
-                        console.print(f"\n[cyan]Completed uploading images. Total uploaded: {len(image_list)}")
+                    # If we broke out of the loop due to a failure, switch to the next host and retry
+                    img_host_num += 1
+                    img_host = self.config['DEFAULT'].get(f'img_host_{img_host_num}')
+                    if not img_host:
+                        console.print("[red]All image hosts failed. Unable to complete uploads.")
                         return image_list, i
 
-                # If we broke out of the loop due to a failure, switch to the next host and retry
-                img_host_num += 1
-                if img_host_num > len(self.config['DEFAULT']) - 1:
-                    console.print("[red]All image hosts failed. Unable to complete uploads.")
-                    return image_list, i  # Or you could raise an exception if preferred
-
-                img_host = self.config['DEFAULT'][f'img_host_{img_host_num}']
+            # Ensure that if all attempts fail, a valid tuple is returned
+            return image_list, i
 
     async def imgbox_upload(self, chdir, image_glob):
         os.chdir(chdir)
         image_list = []
-        # image_glob = glob.glob("*.png")
-        async with pyimgbox.Gallery(thumb_width=350, square_thumbs=False) as gallery:
-            async for submission in gallery.add(image_glob):
-                if not submission['success']:
-                    console.print(f"[red]There was an error uploading to imgbox: [yellow]{submission['error']}[/yellow][/red]")
-                    return []
-                else:
-                    image_dict = {}
-                    image_dict['web_url'] = submission['web_url']
-                    image_dict['img_url'] = submission['thumbnail_url']
-                    image_dict['raw_url'] = submission['image_url']
-                    image_list.append(image_dict)
+
+        # Initialize the progress bar
+        with Progress(
+            TextColumn("[bold green]Uploading Screens to Imgbox..."),
+            BarColumn(),
+            "[cyan]{task.completed}/{task.total}",
+            TimeRemainingColumn()
+        ) as progress:
+            upload_task = progress.add_task("Uploading...", total=len(image_glob))
+
+            async with pyimgbox.Gallery(thumb_width=350, square_thumbs=False) as gallery:
+                async for submission in gallery.add(image_glob):
+                    if not submission['success']:
+                        console.print(f"[red]There was an error uploading to imgbox: [yellow]{submission['error']}[/yellow][/red]")
+                        return []
+                    else:
+                        image_dict = {}
+                        image_dict['web_url'] = submission['web_url']
+                        image_dict['img_url'] = submission['thumbnail_url']
+                        image_dict['raw_url'] = submission['image_url']
+                        image_list.append(image_dict)
+
+                        # Update the progress bar
+                        progress.advance(upload_task)
+
         return image_list
 
     async def get_name(self, meta):
@@ -2689,7 +2792,7 @@ class Prep():
             if meta['anime'] is False:
                 try:
                     if meta.get('manual_date'):
-                        raise ManualDateException # noqa: F405
+                        raise ManualDateException  # noqa: F405
                     try:
                         guess_year = guessit(video)['year']
                     except Exception:
@@ -2795,7 +2898,7 @@ class Prep():
                             url = "https://thexem.info/map/single"
                             response = requests.post(url, params=params).json()
                             if response['result'] == "failure":
-                                raise XEMNotFound # noqa: F405
+                                raise XEMNotFound  # noqa: F405
                             if meta['debug']:
                                 console.log(f"[cyan]TheXEM Absolute -> Standard[/cyan]\n{response}")
                             season_int = int(response['data']['scene']['season'])  # Convert to integer
@@ -2833,7 +2936,7 @@ class Prep():
                                                     season = f"S{str(season_int).zfill(2)}"
                                                     difference = diff
                             else:
-                                raise XEMNotFound
+                                raise XEMNotFound  # noqa: F405
                     except Exception:
                         if meta['debug']:
                             console.print_exception()

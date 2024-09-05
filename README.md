@@ -35,7 +35,7 @@ A simple tool to take the work out of uploading.
 
 ## Coming Soon:
   - Features
-  
+  - Rebase
 
 ## **Setup:**
    - **REQUIRES AT LEAST PYTHON 3.12 AND PIP3**
