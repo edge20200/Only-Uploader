@@ -169,7 +169,7 @@ class Prep():
                     file_name=search_term
                 )
 
-                if any(item not in [None, '0'] for item in tracker_data[:3]):  # Check for valid tmdb, imdb, or tvdb
+            if any(item not in [None, '0'] for item in tracker_data[:3]):  # Check for valid tmdb, imdb, or tvdb
                 console.print(f"[green]Valid data found on {tracker_name}, setting meta values[/green]")
                 await self.update_meta_with_unit3d_data(meta, tracker_data, tracker_name)
                 found_match = True
