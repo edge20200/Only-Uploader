@@ -1074,7 +1074,7 @@ class Prep():
                             self.optimize_images(image)
                             if os.path.getsize(Path(image)) <= 31000000 and self.img_host == "imgbb":
                                 i += 1
-                            elif os.path.getsize(Path(image)) <= 10000000 and self.img_host in ["imgbox", 'pixhost']:
+                            elif os.path.getsize(Path(image)) <= 10000000 and self.img_host in ["imgbox", 'pixhost', 'oeimg']:
                                 i += 1
                             elif os.path.getsize(Path(image)) <= 75000:
                                 console.print("[bold yellow]Image is incredibly small, retaking")
@@ -1207,7 +1207,7 @@ class Prep():
                         try:
                             if os.path.getsize(Path(image)) <= 31000000 and self.img_host == "imgbb":
                                 i += 1
-                            elif os.path.getsize(Path(image)) <= 10000000 and self.img_host in ["imgbox", 'pixhost']:
+                            elif os.path.getsize(Path(image)) <= 10000000 and self.img_host in ["imgbox", 'pixhost', 'oeimg']:
                                 i += 1
                             elif os.path.getsize(Path(image)) <= 75000:
                                 console.print("[yellow]Image is incredibly small (and is most likely to be a single color), retaking")
@@ -1327,7 +1327,7 @@ class Prep():
                                     time.sleep(1)
                                 if os.path.getsize(Path(image_path)) <= 31000000 and self.img_host == "imgbb" and retake is False:
                                     i += 1
-                                elif os.path.getsize(Path(image_path)) <= 10000000 and self.img_host in ["imgbox", 'pixhost'] and retake is False:
+                                elif os.path.getsize(Path(image_path)) <= 10000000 and self.img_host in ["imgbox", 'pixhost', 'oeimg'] and retake is False:
                                     i += 1
                                 elif self.img_host in ["ptpimg", "lensdump", "ptscreens"] and retake is False:
                                     i += 1
@@ -2559,7 +2559,7 @@ class Prep():
                                 response = requests.post(url, data=data, headers=headers, timeout=timeout)
                                 response = response.json()
                                 if response.get('status_code') != 200:
-                                    console.print("[yellow]OnlyImg failed, trying next image host")
+                                    console.print("[yellow]OnlyImage failed, trying next image host")
                                     break
                                 img_url = response['data']['image']['url']
                                 raw_url = img_url
