@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from src.args import Args
 from src.console import console
-from src.exceptions import * # noqa: F403
+from src.exceptions import *  # noqa: F403
 from src.trackers.PTP import PTP
 from src.trackers.BLU import BLU
 from src.trackers.AITHER import AITHER
@@ -103,7 +103,7 @@ class Prep():
                                 image.verify()  # This will check if the image is broken
                                 console.print(f"[green]Image verified successfully: {url}[/green]")
                                 return True
-                            except (IOError, SyntaxError) as e: # noqa #F841
+                            except (IOError, SyntaxError) as e:  # noqa #F841
                                 console.print(f"[red]Image verification failed (corrupt image): {url}[/red]")
                                 return False
                         else:
@@ -151,7 +151,7 @@ class Prep():
         manual_key = f"{tracker_key}_manual"
         found_match = False
 
-        if tracker_name in ["BLU", "AITHER", "LST"]: # Example for UNIT3D trackers
+        if tracker_name in ["BLU", "AITHER", "LST"]:  # Example for UNIT3D trackers
             if meta.get(tracker_key) is not None:
                 console.print(f"[cyan]{tracker_name} ID found in meta, reusing existing ID: {meta[tracker_key]}[/cyan]")
                 tracker_data = await COMMON(self.config).unit3d_torrent_info(
@@ -178,7 +178,7 @@ class Prep():
                 found_match = False
 
         elif tracker_name == "PTP":
-           imdb_id = None  # Ensure imdb_id is defined
+            imdb_id = None  # Ensure imdb_id is defined
             # Check if the PTP ID is already in meta
             if meta.get('ptp') is None:
                 # No PTP ID in meta, search by search term
@@ -226,7 +226,7 @@ class Prep():
                     console.print(f"[yellow]Could not find IMDb ID using PTP ID: {ptp_torrent_id}[/yellow]")
                     found_match = False
 
-            # Retrieve PTP description and image list
+                # Retrieve PTP description and image list
                 ptp_desc, ptp_imagelist = await tracker_instance.get_ptp_description(meta['ptp'], meta.get('is_disc', False))
                 meta['description'] = ptp_desc
 
@@ -265,7 +265,7 @@ class Prep():
                     meta[tracker_key] = tracker_id
                 found_match = True
 
-            if found_match:
+                if found_match:
                     if imdb or tvdb_id or hdb_name:
                         console.print(f"[green]{tracker_name} data found: IMDb ID: {imdb}, TVDb ID: {meta['tvdb_id']}, HDB Name: {meta['hdb_name']}[/green]")
                         if await self.prompt_user_for_confirmation(f"Do you want to use the ID's found on {tracker_name}?"):
@@ -278,7 +278,7 @@ class Prep():
                             found_match = False
                     else:
                         found_match = False
-        
+
         return meta, found_match
 
     async def handle_image_list(self, meta, tracker_name):
@@ -452,13 +452,13 @@ class Prep():
                     if match:
                         found_match = True
 
-            elif specific_tracker == 'BLU' and str(self.config['TRACKERS'].get('BLU', {}).get('useAPI')).lower() == "true":
+                elif specific_tracker == 'BLU' and str(self.config['TRACKERS'].get('BLU', {}).get('useAPI')).lower() == "true":
                     blu = BLU(config=self.config)
                     meta, match = await self.update_metadata_from_tracker('BLU', blu, meta, search_term, search_file_folder)
                     if match:
                         found_match = True
 
-            elif specific_tracker == 'AITHER' and str(self.config['TRACKERS'].get('AITHER', {}).get('useAPI')).lower() == "true":
+                elif specific_tracker == 'AITHER' and str(self.config['TRACKERS'].get('AITHER', {}).get('useAPI')).lower() == "true":
                     aither = AITHER(config=self.config)
                     meta, match = await self.update_metadata_from_tracker('AITHER', aither, meta, search_term, search_file_folder)
                     if match:
@@ -470,12 +470,12 @@ class Prep():
                     if match:
                         found_match = True
 
-            elif specific_tracker == 'HDB' and str(self.config['TRACKERS'].get('HDB', {}).get('useAPI')).lower() == "true":
+                elif specific_tracker == 'HDB' and str(self.config['TRACKERS'].get('HDB', {}).get('useAPI')).lower() == "true":
                     hdb = HDB(config=self.config)
                     meta, match = await self.update_metadata_from_tracker('HDB', hdb, meta, search_term, search_file_folder)
                     if match:
                         found_match = True
-        else:
+            else:
                 # Process all trackers if no specific tracker is set in meta
                 default_trackers = self.config['TRACKERS'].get('default_trackers', "").split(", ")
 
@@ -1106,7 +1106,7 @@ class Prep():
         sar = 1
         for track in ifo_mi.tracks:
             if track.track_type == "Video":
-                length = float(track.duration)/1000 # noqa F841
+                length = float(track.duration)/1000  # noqa F841
                 par = float(track.pixel_aspect_ratio)
                 dar = float(track.display_aspect_ratio)
                 width = float(track.width)
@@ -1327,7 +1327,7 @@ class Prep():
                                     time.sleep(1)
                                 if os.path.getsize(Path(image_path)) <= 31000000 and self.img_host == "imgbb" and retake is False:
                                     i += 1
-                                elif os.path.getsize(Path(image_path)) <= 10000000 and self.img_host in ["imgbox", 'pixhost', 'oeimg'] and retake is False:
+                                elif os.path.getsize(Path(image_path)) <= 10000000 and self.img_host in ["imgbox", 'pixhost'] and retake is False:
                                     i += 1
                                 elif self.img_host in ["ptpimg", "lensdump", "ptscreens"] and retake is False:
                                     i += 1
@@ -2016,7 +2016,7 @@ class Prep():
                         if track.track_type == "Video":
                             system = track.standard
                     if system not in ("PAL", "NTSC"):
-                        raise WeirdSystem # noqa: F405
+                        raise WeirdSystem  # noqa: F405
                 except Exception:
                     try:
                         other = guessit(video)['other']
@@ -2504,7 +2504,7 @@ class Prep():
                 while True:
                     upload_task = progress.add_task(f"[green]Uploading Screens to {img_host}...", total=len(image_glob[-screens:]))
 
-                for image in image_glob[-screens:]:
+                    for image in image_glob[-screens:]:
                         try:
                             timeout = 60
                             if img_host == "ptpimg":
@@ -2554,12 +2554,12 @@ class Prep():
                                     'image': base64.b64encode(open(image, "rb").read()).decode('utf8')
                                 }
                                 headers = {
-                                    'X-API-Key': self.config['DEFAULT']['oeimg0_api'],
+                                    'X-API-Key': self.config['DEFAULT']['oeimg_api'],
                                 }
                                 response = requests.post(url, data=data, headers=headers, timeout=timeout)
                                 response = response.json()
                                 if response.get('status_code') != 200:
-                                    console.print("[yellow]OnlyImage Screens failed, trying next image host")
+                                    console.print("[yellow]OnlyImg failed, trying next image host")
                                     break
                                 img_url = response['data']['image']['url']
                                 raw_url = img_url
@@ -2610,18 +2610,18 @@ class Prep():
                             progress.advance(upload_task)
                             i += 1
 
-                            except Exception as e:
+                        except Exception as e:
                             console.print(f"[yellow]Failed to upload {image} to {img_host}. Exception: {str(e)}")
                             break
 
-                            time.sleep(0.5)
+                        time.sleep(0.5)
 
-                            if i >= total_screens:
-                                return_dict['image_list'] = image_list
-                                console.print(f"\n[cyan]Completed uploading images. Total uploaded: {len(image_list)}")
-                                return image_list, i
+                        if i >= total_screens:
+                            return_dict['image_list'] = image_list
+                            console.print(f"\n[cyan]Completed uploading images. Total uploaded: {len(image_list)}")
+                            return image_list, i
 
-                # If we broke out of the loop due to a failure, switch to the next host and retry
+                    # If we broke out of the loop due to a failure, switch to the next host and retry
                     img_host_num += 1
                     img_host = self.config['DEFAULT'].get(f'img_host_{img_host_num}')
                     if not img_host:
@@ -2634,7 +2634,7 @@ class Prep():
     async def imgbox_upload(self, chdir, image_glob):
         os.chdir(chdir)
         image_list = []
-        
+
         # Initialize the progress bar
         with Progress(
             TextColumn("[bold green]Uploading Screens to Imgbox..."),
@@ -2792,7 +2792,7 @@ class Prep():
             if meta['anime'] is False:
                 try:
                     if meta.get('manual_date'):
-                        raise ManualDateException # noqa: F405
+                        raise ManualDateException  # noqa: F405
                     try:
                         guess_year = guessit(video)['year']
                     except Exception:
@@ -2898,7 +2898,7 @@ class Prep():
                             url = "https://thexem.info/map/single"
                             response = requests.post(url, params=params).json()
                             if response['result'] == "failure":
-                                raise XEMNotFound # noqa: F405
+                                raise XEMNotFound  # noqa: F405
                             if meta['debug']:
                                 console.log(f"[cyan]TheXEM Absolute -> Standard[/cyan]\n{response}")
                             season_int = int(response['data']['scene']['season'])  # Convert to integer
@@ -2936,7 +2936,7 @@ class Prep():
                                                     season = f"S{str(season_int).zfill(2)}"
                                                     difference = diff
                             else:
-                                raise XEMNotFound
+                                raise XEMNotFound  # noqa: F405
                     except Exception:
                         if meta['debug']:
                             console.print_exception()
