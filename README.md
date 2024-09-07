@@ -1,6 +1,6 @@
 # Only-Uploader
 
-Forked from L4G Upload Assistant, thanks for all the work L4G on this tool.
+Forked from L4G Upload Assistant, thanks for all the work L4G on this tool and all the forks and updates. 
 
 This fork is being maintained by OE.
 
