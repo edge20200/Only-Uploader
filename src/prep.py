@@ -1982,8 +1982,14 @@ class Prep():
         try:
             tag = guessit(video)['release_group']
             tag = f"-{tag}"
-        except Exception:
+        except:
             tag = ""
+        
+        # Adjust to only keep the last part after the last dash
+        if tag.startswith("-"):
+            parts = tag[1:].split('-')
+            tag = f"-{parts[-1]}"  # Keep only the last part
+
         if tag == "-":
             tag = ""
         if tag[1:].lower() in ["nogroup", 'nogrp']:
