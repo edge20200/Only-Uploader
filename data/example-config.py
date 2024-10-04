@@ -160,7 +160,7 @@ config = {
             "img_rehost": False,
             "username": "",
             "password": "",
-            "ptgen_api" "",
+            "ptgen_api": "",
             "anon": True,
         },
         "TL": {
@@ -206,6 +206,11 @@ config = {
         "ULCX": {
             "api_key": "ULXC api key",
             "announce_url": "https://upload.cx/announce/customannounceurl",
+            # "anon" : False
+        },
+        "PSS": {
+            "api_key": "PSS api key",
+            "announce_url": "https://privatesilverscreen.cc/announce/customannounceurl",
             # "anon" : False
         },
         "UTP": {
