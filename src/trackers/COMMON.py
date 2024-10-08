@@ -205,7 +205,10 @@ class COMMON():
         try:
             # Handle response when searching by file name (which might return a 'data' array)
             data = json_response.get('data', [])
-            if data:
+            if data == "404":
+                console.print("[yellow]No data found (404). Returning None.[/yellow]")
+                return None, None, None, None, None, None, None, None, None
+            if data and isinstance(data, list):  # Ensure data is a list before accessing it
                 attributes = data[0].get('attributes', {})
 
                 # Extract data from the attributes
