@@ -21,7 +21,7 @@ class OTW():
     def __init__(self, config):
         self.config = config
         self.tracker = 'OTW'
-        self.source_flag = 'OTW'
+        self.source_flag = 'OLD'
         self.upload_url = 'https://oldtoons.world/api/torrents/upload'
         self.search_url = 'https://oldtoons.world/api/torrents/filter'
         self.signature = f"\n[center][url=https://github.com/edge20200/Only-Uploader]Powered by Only-Uploader[/url][/center]"
