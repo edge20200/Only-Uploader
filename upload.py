@@ -8,7 +8,6 @@ from src.trackers.HUNO import HUNO
 from src.trackers.BLU import BLU
 from src.trackers.BHD import BHD
 from src.trackers.AITHER import AITHER
-from src.trackers.STC import STC
 from src.trackers.R4E import R4E
 from src.trackers.THR import THR
 from src.trackers.HP import HP
