@@ -6,13 +6,12 @@ from src.trackers.BLU import BLU
 from src.trackers.BHD import BHD
 from src.trackers.AITHER import AITHER
 from src.trackers.STC import STC
-from src.trackers.OE import OE
 from src.trackers.LCD import LCD
 from src.trackers.CBR import CBR
-from data.config import config # type: ignore
+from data.config import config  # type: ignore
 
-import discord # type: ignore
-from discord.ext import commands # type: ignore
+import discord  # type: ignore
+from discord.ext import commands  # type: ignore
 import os
 from datetime import datetime
 import asyncio
@@ -281,7 +280,7 @@ class Commands(commands.Cog):
             channel = message.channel
             if meta['nohash'] is False:
                 if meta.get('torrenthash', None) is not None:
-                    reuse_torrent = await client.find_existing_torrent(meta) # noqa F821
+                    reuse_torrent = await client.find_existing_torrent(meta)  # noqa F821
                     if reuse_torrent is not None:
                         prep.create_base_from_existing_torrent(reuse_torrent, meta['base_dir'], meta['uuid'])
 

@@ -5,6 +5,9 @@ import requests
 from str2bool import str2bool
 import tmdbsimple as tmdb
 import platform
+import bencodepy
+import os
+import glob
 
 from src.trackers.COMMON import COMMON
 from src.console import console
@@ -27,7 +30,7 @@ class R4E():
         self.banned_groups = [""]
         pass
 
-    async def upload(self, meta):
+    async def upload(self, meta, disctype):
         common = COMMON(config=self.config)
         await common.edit_torrent(meta, self.tracker, self.source_flag)
         cat_id = await self.get_cat_id(meta['category'], meta['tmdb'])
@@ -44,9 +47,18 @@ class R4E():
         else:
             mi_dump = open(f"{meta['base_dir']}/tmp/{meta['uuid']}/MEDIAINFO.txt", 'r', encoding='utf-8').read()
             bd_dump = None
-        desc = open(f"{meta['base_dir']}/tmp/{meta['uuid']}/[R4E]DESCRIPTION.txt", 'r').read()
+        desc = open(f"{meta['base_dir']}/tmp/{meta['uuid']}/[R4E]DESCRIPTION.txt", 'r', encoding='utf-8').read()
         open_torrent = open(f"{meta['base_dir']}/tmp/{meta['uuid']}/[R4E]{meta['clean_name']}.torrent", 'rb')
         files = {'torrent': open_torrent}
+        base_dir = meta['base_dir']
+        uuid = meta['uuid']
+        specified_dir_path = os.path.join(base_dir, "tmp", uuid, "*.nfo")
+        nfo_files = glob.glob(specified_dir_path)
+        nfo_file = None
+        if nfo_files:
+            nfo_file = open(nfo_files[0], 'rb')
+        if nfo_file:
+            files['nfo'] = ("nfo_file.nfo", nfo_file, "text/plain")
         data = {
             'name': name,
             'description': desc,
@@ -71,7 +83,7 @@ class R4E():
             # 'sticky' : 0,
         }
         headers = {
-            'User-Agent': f'Upload Assistant/2.1 ({platform.system()} {platform.release()})'
+            'User-Agent': f'Upload Assistant/2.2 ({platform.system()} {platform.release()})'
         }
         url = f"https://racing4everyone.eu/api/torrents/upload?api_token={self.config['TRACKERS']['R4E']['api_key'].strip()}"
         if meta.get('category') == "TV":
@@ -136,7 +148,7 @@ class R4E():
                 is_docu = True
         return is_docu
 
-    async def search_existing(self, meta):
+    async def search_existing(self, meta, disctype):
         dupes = []
         console.print("[yellow]Searching for existing torrents on site...")
         url = "https://racing4everyone.eu/api/torrents/filter"
@@ -164,3 +176,42 @@ class R4E():
             await asyncio.sleep(5)
 
         return dupes
+
+    async def search_torrent_page(self, meta, disctype):
+        torrent_file_path = f"{meta['base_dir']}/tmp/{meta['uuid']}/[{self.tracker}]{meta['clean_name']}.torrent"
+        Name = meta['name']
+        quoted_name = f'"{Name}"'
+
+        params = {
+            'api_token': self.config['TRACKERS'][self.tracker]['api_key'].strip(),
+            'name': quoted_name
+        }
+
+        try:
+            response = requests.get(url=self.search_url, params=params)
+            response.raise_for_status()
+            response_data = response.json()
+
+            if response_data['data'] and isinstance(response_data['data'], list):
+                details_link = response_data['data'][0]['attributes'].get('details_link')
+
+                if details_link:
+                    with open(torrent_file_path, 'rb') as open_torrent:
+                        torrent_data = open_torrent.read()
+
+                    torrent = bencodepy.decode(torrent_data)
+                    torrent[b'comment'] = details_link.encode('utf-8')
+                    updated_torrent_data = bencodepy.encode(torrent)
+
+                    with open(torrent_file_path, 'wb') as updated_torrent_file:
+                        updated_torrent_file.write(updated_torrent_data)
+
+                    return details_link
+                else:
+                    return None
+            else:
+                return None
+
+        except requests.exceptions.RequestException as e:
+            print(f"An error occurred during the request: {e}")
+            return None

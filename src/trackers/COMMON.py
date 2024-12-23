@@ -4,6 +4,11 @@ import requests
 import re
 import json
 import click
+import sys
+import glob
+from pymediainfo import MediaInfo
+import multiprocessing
+import asyncio
 
 from src.bbcode import BBCODE
 from src.console import console
@@ -12,6 +17,7 @@ from src.console import console
 class COMMON():
     def __init__(self, config):
         self.config = config
+        self.parser = self.MediaInfoParser()
         pass
 
     async def edit_torrent(self, meta, tracker, source_flag, torrent_filename="BASE"):
@@ -34,48 +40,292 @@ class COMMON():
             Torrent.copy(new_torrent).write(f"{meta['base_dir']}/tmp/{meta['uuid']}/[{tracker}]{meta['clean_name']}.torrent", overwrite=True)
 
     async def unit3d_edit_desc(self, meta, tracker, signature, comparison=False, desc_header=""):
+        from src.prep import Prep
+        prep = Prep(screens=meta['screens'], img_host=meta['imghost'], config=self.config)
         base = open(f"{meta['base_dir']}/tmp/{meta['uuid']}/DESCRIPTION.txt", 'r', encoding='utf8').read()
+        multi_screens = int(self.config['DEFAULT'].get('multiScreens', 2))
+        char_limit = int(self.config['DEFAULT'].get('charLimit', 14000))
+        file_limit = int(self.config['DEFAULT'].get('fileLimit', 5))
+        thumb_size = int(self.config['DEFAULT'].get('pack_thumb_size', '300'))
+        process_limit = int(self.config['DEFAULT'].get('processLimit', 10))
+        try:
+            screenheader = self.config['DEFAULT']['screenshot_header']
+        except Exception:
+            screenheader = None
         with open(f"{meta['base_dir']}/tmp/{meta['uuid']}/[{tracker}]DESCRIPTION.txt", 'w', encoding='utf8') as descfile:
-            if desc_header != "":
+            if desc_header:
                 descfile.write(desc_header)
 
             bbcode = BBCODE()
-            if meta.get('discs', []) != []:
-                discs = meta['discs']
-                if discs[0]['type'] == "DVD":
-                    descfile.write(f"[spoiler=VOB MediaInfo][code]{discs[0]['vob_mi']}[/code][/spoiler]\n")
-                    descfile.write("\n")
-                if len(discs) >= 2:
-                    for each in discs[1:]:
-                        if each['type'] == "BDMV":
-                            descfile.write(f"[spoiler={each.get('name', 'BDINFO')}][code]{each['summary']}[/code][/spoiler]\n")
-                            descfile.write("\n")
-                        elif each['type'] == "DVD":
-                            descfile.write(f"{each['name']}:\n")
-                            descfile.write(f"[spoiler={os.path.basename(each['vob'])}][code][{each['vob_mi']}[/code][/spoiler] [spoiler={os.path.basename(each['ifo'])}][code][{each['ifo_mi']}[/code][/spoiler]\n")
-                            descfile.write("\n")
-                        elif each['type'] == "HDDVD":
-                            descfile.write(f"{each['name']}:\n")
-                            descfile.write(f"[spoiler={os.path.basename(each['largest_evo'])}][code][{each['evo_mi']}[/code][/spoiler]\n")
-                            descfile.write("\n")
+            discs = meta.get('discs', [])
+            filelist = meta.get('filelist', [])
             desc = base
+            desc = re.sub(r'\[center\]\[spoiler=Scene NFO:\].*?\[/center\]', '', desc, flags=re.DOTALL)
             desc = bbcode.convert_pre_to_code(desc)
             desc = bbcode.convert_hide_to_spoiler(desc)
             if comparison is False:
                 desc = bbcode.convert_comparison_to_collapse(desc, 1000)
-
             desc = desc.replace('[img]', '[img=300]')
             descfile.write(desc)
-            images = meta['image_list']
-            if len(images) > 0:
+            # Handle single disc case
+            if len(discs) == 1:
+                each = discs[0]
+                if each['type'] == "DVD":
+                    descfile.write("[center]")
+                    descfile.write(f"[spoiler={os.path.basename(each['vob'])}][code]{each['vob_mi']}[/code][/spoiler]\n\n")
+                    descfile.write("[/center]")
+                images = meta['image_list']
+                if screenheader is not None:
+                    descfile.write(screenheader + '\n')
                 descfile.write("[center]")
-                for each in range(len(images[:int(meta['screens'])])):
-                    web_url = images[each]['web_url']
-                    raw_url = images[each]['raw_url']
-                    descfile.write(f"[url={web_url}][img=350]{raw_url}[/img][/url]")
+                for img_index in range(len(images[:int(meta['screens'])])):
+                    web_url = images[img_index]['web_url']
+                    raw_url = images[img_index]['raw_url']
+                    descfile.write(f"[url={web_url}][img={self.config['DEFAULT'].get('thumbnail_size', '350')}]{raw_url}[/img][/url]")
                 descfile.write("[/center]")
 
-            if signature is not None:
+            # Handle multiple discs case
+            elif len(discs) > 1:
+                if multi_screens == 0:
+                    multi_screens = 2
+                # Initialize retry_count if not already set
+                if 'retry_count' not in meta:
+                    meta['retry_count'] = 0
+
+                for i, each in enumerate(discs):
+                    # Set a unique key per disc for managing images
+                    new_images_key = f'new_images_disc_{i}'
+
+                    if i == 0:
+                        descfile.write("[center]")
+                        if each['type'] == "BDMV":
+                            descfile.write(f"{each.get('name', 'BDINFO')}\n\n")
+                        elif each['type'] == "DVD":
+                            descfile.write(f"{each['name']}:\n")
+                            descfile.write(f"[spoiler={os.path.basename(each['vob'])}][code]{each['vob_mi']}[/code][/spoiler]")
+                            descfile.write(f"[spoiler={os.path.basename(each['ifo'])}][code]{each['ifo_mi']}[/code][/spoiler]\n\n")
+                        # For the first disc, use images from `meta['image_list']`
+                        if meta['debug']:
+                            console.print("[yellow]Using original uploaded images for first disc")
+                        images = meta['image_list']
+                        for img_index in range(min(multi_screens, len(images))):
+                            web_url = images[img_index]['web_url']
+                            raw_url = images[img_index]['raw_url']
+                            image_str = f"[url={web_url}][img={thumb_size}]{raw_url}[/img][/url]"
+                            descfile.write(image_str)
+                        descfile.write("[/center]\n\n")
+                    else:
+                        # Check if screenshots exist for the current disc key
+                        if new_images_key in meta and meta[new_images_key]:
+                            if meta['debug']:
+                                console.print(f"[yellow]Found needed image URLs for {new_images_key}")
+                            descfile.write("[center]")
+                            if each['type'] == "BDMV":
+                                descfile.write(f"[spoiler={each.get('name', 'BDINFO')}][code]{each['summary']}[/code][/spoiler]\n\n")
+                            elif each['type'] == "DVD":
+                                descfile.write(f"{each['name']}:\n")
+                                descfile.write(f"[spoiler={os.path.basename(each['vob'])}][code]{each['vob_mi']}[/code][/spoiler] ")
+                                descfile.write(f"[spoiler={os.path.basename(each['ifo'])}][code]{each['ifo_mi']}[/code][/spoiler]\n\n")
+                            descfile.write("[/center]\n\n")
+                            # Use existing URLs from meta to write to descfile
+                            descfile.write("[center]")
+                            for img in meta[new_images_key]:
+                                web_url = img['web_url']
+                                raw_url = img['raw_url']
+                                image_str = f"[url={web_url}][img={thumb_size}]{raw_url}[/img][/url]"
+                                descfile.write(image_str)
+                            descfile.write("[/center]\n\n")
+                        else:
+                            # Increment retry_count for tracking but use unique disc keys for each disc
+                            meta['retry_count'] += 1
+                            meta[new_images_key] = []
+                            descfile.write("[center]")
+                            if each['type'] == "BDMV":
+                                descfile.write(f"[spoiler={each.get('name', 'BDINFO')}][code]{each['summary']}[/code][/spoiler]\n\n")
+                            elif each['type'] == "DVD":
+                                descfile.write(f"{each['name']}:\n")
+                                descfile.write(f"[spoiler={os.path.basename(each['vob'])}][code]{each['vob_mi']}[/code][/spoiler] ")
+                                descfile.write(f"[spoiler={os.path.basename(each['ifo'])}][code]{each['ifo_mi']}[/code][/spoiler]\n\n")
+                            descfile.write("[/center]\n\n")
+                            # Check if new screenshots already exist before running prep.screenshots
+                            if each['type'] == "BDMV":
+                                new_screens = glob.glob1(f"{meta['base_dir']}/tmp/{meta['uuid']}", f"FILE_{i}-*.png")
+                            elif each['type'] == "DVD":
+                                new_screens = glob.glob1(f"{meta['base_dir']}/tmp/{meta['uuid']}", f"{meta['discs'][i]['name']}-*.png")
+                            if not new_screens:
+                                if meta['debug']:
+                                    console.print(f"[yellow]No new screens for {new_images_key}; creating new screenshots")
+                                # Run prep.screenshots if no screenshots are present
+                                if each['type'] == "BDMV":
+                                    use_vs = meta.get('vapoursynth', False)
+                                    s = multiprocessing.Process(target=prep.disc_screenshots, args=(meta, f"FILE_{i}", each['bdinfo'], meta['uuid'], meta['base_dir'], use_vs, [], meta.get('ffdebug', False), multi_screens, True))
+                                    s.start()
+                                    while s.is_alive():
+                                        await asyncio.sleep(1)
+                                    new_screens = glob.glob1(f"{meta['base_dir']}/tmp/{meta['uuid']}", f"FILE_{i}-*.png")
+                                elif each['type'] == "DVD":
+                                    s = multiprocessing.Process(target=prep.dvd_screenshots, args=(meta, i, multi_screens, True))
+                                    s.start()
+                                    while s.is_alive() is True:
+                                        await asyncio.sleep(1)
+                                    new_screens = glob.glob1(f"{meta['base_dir']}/tmp/{meta['uuid']}", f"{meta['discs'][i]['name']}-*.png")
+
+                            if new_screens:
+                                uploaded_images, _ = prep.upload_screens(meta, multi_screens, 1, 0, 2, new_screens, {new_images_key: meta[new_images_key]})
+
+                                # Append each uploaded image's data to `meta[new_images_key]`
+                                for img in uploaded_images:
+                                    meta[new_images_key].append({
+                                        'img_url': img['img_url'],
+                                        'raw_url': img['raw_url'],
+                                        'web_url': img['web_url']
+                                    })
+
+                                # Write new URLs to descfile
+                                descfile.write("[center]")
+                                for img in uploaded_images:
+                                    web_url = img['web_url']
+                                    raw_url = img['raw_url']
+                                    image_str = f"[url={web_url}][img={thumb_size}]{raw_url}[/img][/url]"
+                                    descfile.write(image_str)
+                                descfile.write("[/center]\n\n")
+
+                            # Save the updated meta to `meta.json` after upload
+                            meta_filename = f"{meta['base_dir']}/tmp/{meta['uuid']}/meta.json"
+                            with open(meta_filename, 'w') as f:
+                                json.dump(meta, f, indent=4)
+
+            # Handle single file case
+            if len(filelist) == 1:
+                if meta['debug']:
+                    mi_dump = open(f"{meta['base_dir']}/tmp/{meta['uuid']}/MEDIAINFO_CLEANPATH.txt", 'r', encoding='utf-8').read()
+                    if mi_dump:
+                        parsed_mediainfo = self.parser.parse_mediainfo(mi_dump)
+                        formatted_bbcode = self.parser.format_bbcode(parsed_mediainfo)
+                        for i, file in enumerate(filelist):
+                            if i == 0:
+                                filename = os.path.splitext(os.path.basename(file.strip()))[0]
+                                descfile.write(f"[center][spoiler={filename}]{formatted_bbcode}[/spoiler]\n")
+                images = meta['image_list']
+                if screenheader is not None:
+                    descfile.write(screenheader + '\n')
+                descfile.write("[center]")
+                for img_index in range(len(images[:int(meta['screens'])])):
+                    web_url = images[img_index]['web_url']
+                    raw_url = images[img_index]['raw_url']
+                    descfile.write(f"[url={web_url}][img={self.config['DEFAULT'].get('thumbnail_size', '350')}]{raw_url}[/img][/url]")
+                descfile.write("[/center]")
+
+            # Handle multiple files case
+            # Initialize character counter
+            char_count = 0
+            max_char_limit = char_limit  # Character limit
+            other_files_spoiler_open = False  # Track if "Other files" spoiler has been opened
+
+            # First Pass: Create and Upload Images for Each File
+            for i, file in enumerate(filelist):
+                if i >= process_limit:
+                    # console.print("[yellow]Skipping processing more files as they exceed the process limit.")
+                    continue
+                if multi_screens != 0:
+                    if i > 0:
+                        new_images_key = f'new_images_file_{i}'
+                        if new_images_key not in meta or not meta[new_images_key]:
+                            # Proceed with image generation if not already present
+                            meta[new_images_key] = []
+                            new_screens = glob.glob1(f"{meta['base_dir']}/tmp/{meta['uuid']}", f"FILE_{i}-*.png")
+
+                            # If no screenshots exist, create them
+                            if not new_screens:
+                                if meta['debug']:
+                                    console.print(f"[yellow]No existing screenshots for {new_images_key}; generating new ones.")
+                                s = multiprocessing.Process(target=prep.screenshots, args=(file, f"FILE_{i}", meta['uuid'], meta['base_dir'], meta, multi_screens + 1, True, None))
+                                s.start()
+                                while s.is_alive():
+                                    await asyncio.sleep(1)
+
+                                new_screens = glob.glob1(f"{meta['base_dir']}/tmp/{meta['uuid']}", f"FILE_{i}-*.png")
+
+                            # Upload generated screenshots
+                            if new_screens:
+                                uploaded_images, _ = prep.upload_screens(meta, multi_screens, 1, 0, 2, new_screens, {new_images_key: meta[new_images_key]})
+                                meta[new_images_key] = []
+                                for img in uploaded_images:
+                                    meta[new_images_key].append({
+                                        'img_url': img['img_url'],
+                                        'raw_url': img['raw_url'],
+                                        'web_url': img['web_url']
+                                    })
+
+            # Save updated meta
+            meta_filename = f"{meta['base_dir']}/tmp/{meta['uuid']}/meta.json"
+            with open(meta_filename, 'w') as f:
+                json.dump(meta, f, indent=4)
+
+            # Second Pass: Process MediaInfo and Write Descriptions
+            if len(filelist) > 1:
+                for i, file in enumerate(filelist):
+                    if i >= process_limit:
+                        continue
+                    # Extract filename directly from the file path
+                    filename = os.path.splitext(os.path.basename(file.strip()))[0]
+
+                    # If we are beyond the file limit, add all further files in a spoiler
+                    if multi_screens != 0:
+                        if i >= file_limit:
+                            if not other_files_spoiler_open:
+                                descfile.write("[center][spoiler=Other files]\n")
+                                char_count += len("[center][spoiler=Other files]\n")
+                                other_files_spoiler_open = True
+
+                    # Write filename in BBCode format with MediaInfo in spoiler if not the first file
+                    if multi_screens != 0:
+                        if i > 0 and char_count < max_char_limit:
+                            mi_dump = MediaInfo.parse(file, output="STRING", full=False, mediainfo_options={'inform_version': '1'})
+                            parsed_mediainfo = self.parser.parse_mediainfo(mi_dump)
+                            formatted_bbcode = self.parser.format_bbcode(parsed_mediainfo)
+                            descfile.write(f"[center][spoiler={filename}]{formatted_bbcode}[/spoiler][/center]\n")
+                            char_count += len(f"[center][spoiler={filename}]{formatted_bbcode}[/spoiler][/center]\n")
+                        else:
+                            descfile.write(f"[center]{filename}\n[/center]\n")
+                            char_count += len(f"[center]{filename}\n[/center]\n")
+
+                    # Write images if they exist
+                    new_images_key = f'new_images_file_{i}'
+                    if i == 0:  # For the first file, use 'image_list' key
+                        images = meta['image_list']
+                        if images:
+                            descfile.write("[center]")
+                            char_count += len("[center]")
+                            for img_index in range(len(images)):
+                                web_url = images[img_index]['web_url']
+                                raw_url = images[img_index]['raw_url']
+                                image_str = f"[url={web_url}][img={thumb_size}]{raw_url}[/img][/url]"
+                                descfile.write(image_str)
+                                char_count += len(image_str)
+                            descfile.write("[/center]\n\n")
+                            char_count += len("[/center]\n\n")
+                    elif multi_screens != 0:
+                        if new_images_key in meta and meta[new_images_key]:
+                            descfile.write("[center]")
+                            char_count += len("[center]")
+                            for img in meta[new_images_key]:
+                                web_url = img['web_url']
+                                raw_url = img['raw_url']
+                                image_str = f"[url={web_url}][img={thumb_size}]{raw_url}[/img][/url]"
+                                descfile.write(image_str)
+                                char_count += len(image_str)
+                            descfile.write("[/center]\n\n")
+                            char_count += len("[/center]\n\n")
+
+                if other_files_spoiler_open:
+                    descfile.write("[/spoiler][/center]\n")
+                    char_count += len("[/spoiler][/center]\n")
+
+            console.print(f"[yellow]Total characters written to description: {char_count}")
+
+            # Append signature if provided
+            if signature:
                 descfile.write(signature)
             descfile.close()
         return
@@ -142,15 +392,15 @@ class COMMON():
         }.get(distributor, 0)
         return distributor_id
 
-    async def prompt_user_for_id_selection(self, tmdb=None, imdb=None, tvdb=None, filename=None, tracker_name=None):
+    async def prompt_user_for_id_selection(self, meta, tmdb=None, imdb=None, tvdb=None, mal=None, filename=None, tracker_name=None):
         if not tracker_name:
             tracker_name = "Tracker"  # Fallback if tracker_name is not provided
 
         if imdb:
             imdb = str(imdb).zfill(7)  # Convert to string and ensure IMDb ID is 7 characters long by adding leading zeros
-            console.print(f"[cyan]Found IMDb ID: https://www.imdb.com/title/tt{imdb}[/cyan]")
+            # console.print(f"[cyan]Found IMDb ID: https://www.imdb.com/title/tt{imdb}[/cyan]")
 
-        if any([tmdb, imdb, tvdb]):
+        if any([tmdb, imdb, tvdb, mal]):
             console.print(f"[cyan]Found the following IDs on {tracker_name}:")
             if tmdb:
                 console.print(f"TMDb ID: {tmdb}")
@@ -158,15 +408,23 @@ class COMMON():
                 console.print(f"IMDb ID: https://www.imdb.com/title/tt{imdb}")
             if tvdb:
                 console.print(f"TVDb ID: {tvdb}")
+            if mal:
+                console.print(f"MAL ID: {mal}")
 
         if filename:
             console.print(f"Filename: {filename}")  # Ensure filename is printed if available
 
-        selection = input(f"Do you want to use these IDs from {tracker_name}? (Y/n): ").strip().lower()
-        if selection == '' or selection == 'y' or selection == 'yes':
-            return True
+        if not meta['unattended']:
+            selection = input(f"Do you want to use these IDs from {tracker_name}? (Y/n): ").strip().lower()
+            try:
+                if selection == '' or selection == 'y' or selection == 'yes':
+                    return True
+                else:
+                    return False
+            except (KeyboardInterrupt, EOFError):
+                sys.exit(1)
         else:
-            return False
+            return True
 
     async def prompt_user_for_confirmation(self, message):
         response = input(f"{message} (Y/n): ").strip().lower()
@@ -174,7 +432,7 @@ class COMMON():
             return True
         return False
 
-    async def unit3d_torrent_info(self, tracker, torrent_url, search_url, id=None, file_name=None):
+    async def unit3d_torrent_info(self, tracker, torrent_url, search_url, meta, id=None, file_name=None):
         tmdb = imdb = tvdb = description = category = infohash = mal = files = None  # noqa F841
         imagelist = []
 
@@ -193,11 +451,12 @@ class COMMON():
             return None, None, None, None, None, None, None, None, None
 
         response = requests.get(url=url, params=params)
+        # console.print(f"[blue]Raw API Response: {response}[/blue]")
 
         try:
             json_response = response.json()
 
-            # console.print(f"[blue]Raw API Response: {json_response}[/blue]")
+            # console.print(f"Raw API Response: {json_response}", markup=False)
 
         except ValueError:
             return None, None, None, None, None, None, None, None, None
@@ -208,6 +467,7 @@ class COMMON():
             if data == "404":
                 console.print("[yellow]No data found (404). Returning None.[/yellow]")
                 return None, None, None, None, None, None, None, None, None
+
             if data and isinstance(data, list):  # Ensure data is a list before accessing it
                 attributes = data[0].get('attributes', {})
 
@@ -219,6 +479,10 @@ class COMMON():
                 mal = attributes.get('mal_id')
                 imdb = attributes.get('imdb_id')
                 infohash = attributes.get('info_hash')
+                tmdb = None if tmdb == 0 else tmdb
+                tvdb = None if tvdb == 0 else tvdb
+                mal = None if mal == 0 else mal
+                imdb = None if imdb == 0 else imdb
             else:
                 # Handle response when searching by ID
                 if id and not data:
@@ -232,7 +496,10 @@ class COMMON():
                     mal = attributes.get('mal_id')
                     imdb = attributes.get('imdb_id')
                     infohash = attributes.get('info_hash')
-
+                    tmdb = None if tmdb == 0 else tmdb
+                    tvdb = None if tvdb == 0 else tvdb
+                    mal = None if mal == 0 else mal
+                    imdb = None if imdb == 0 else imdb
                     # Handle file name extraction
                     files = attributes.get('files', [])
                     if files:
@@ -244,35 +511,44 @@ class COMMON():
                     console.print(f"[blue]Extracted filename(s): {file_name}[/blue]")  # Print the extracted filename(s)
 
                     # Skip the ID selection prompt if searching by ID
-                    console.print(f"[green]Valid IDs found: TMDb: {tmdb}, IMDb: {imdb}, TVDb: {tvdb}[/green]")
+                    console.print(f"[green]Valid IDs found: TMDb: {tmdb}, IMDb: {imdb}, TVDb: {tvdb}, MAL: {mal}[/green]")
 
             if tmdb or imdb or tvdb:
                 if not id:
                     # Only prompt the user for ID selection if not searching by ID
-                    if not await self.prompt_user_for_id_selection(tmdb, imdb, tvdb, file_name):
-                        console.print("[yellow]User chose to skip based on IDs.[/yellow]")
-                        return None, None, None, None, None, None, None, None, None
+                    try:
+                        if not await self.prompt_user_for_id_selection(meta, tmdb, imdb, tvdb, mal, file_name):
+                            console.print("[yellow]User chose to skip based on IDs.[/yellow]")
+                            return None, None, None, None, None, None, None, None, None
+                    except (KeyboardInterrupt, EOFError):
+                        sys.exit(1)
 
             if description:
                 bbcode = BBCODE()
                 description, imagelist = bbcode.clean_unit3d_description(description, torrent_url)
                 console.print(f"[green]Successfully grabbed description from {tracker}")
-                console.print(f"[blue]Extracted description: [yellow]{description}")
+                console.print(f"Extracted description: {description}", markup=False)
 
-                # Allow user to edit or discard the description
-                console.print("[cyan]Do you want to edit, discard or keep the description?[/cyan]")
-                edit_choice = input("[cyan]Enter 'e' to edit, 'd' to discard, or press Enter to keep it as is: [/cyan]")
-
-                if edit_choice.lower() == 'e':
-                    edited_description = click.edit(description)
-                    if edited_description:
-                        description = edited_description.strip()
-                    console.print(f"[green]Final description after editing:[/green] {description}")
-                elif edit_choice.lower() == 'd':
-                    description = None
-                    console.print("[yellow]Description discarded.[/yellow]")
+                if meta.get('unattended') or (meta.get('blu') or meta.get('aither') or meta.get('lst') or meta.get('oe') or meta.get('tik')):
+                    meta['description'] = description
+                    meta['saved_description'] = True
                 else:
-                    console.print("[green]Keeping the original description.[/green]")
+                    console.print("[cyan]Do you want to edit, discard or keep the description?[/cyan]")
+                    edit_choice = input("Enter 'e' to edit, 'd' to discard, or press Enter to keep it as is:")
+
+                    if edit_choice.lower() == 'e':
+                        edited_description = click.edit(description)
+                        if edited_description:
+                            description = edited_description.strip()
+                        meta['description'] = description
+                        meta['saved_description'] = True
+                    elif edit_choice.lower() == 'd':
+                        description = None
+                        console.print("[yellow]Description discarded.[/yellow]")
+                    else:
+                        console.print("[green]Keeping the original description.[/green]")
+                        meta['description'] = description
+                        meta['saved_description'] = True
 
             return tmdb, imdb, tvdb, mal, description, category, infohash, imagelist, file_name
 
@@ -345,78 +621,451 @@ class COMMON():
         return ptgen
 
     async def filter_dupes(self, dupes, meta):
+        """
+        Filter duplicates by applying exclusion rules. Only non-excluded entries are returned.
+        Everything is a dupe, until it matches a criteria to be excluded.
+        """
         if meta['debug']:
             console.log("[cyan]Pre-filtered dupes")
             console.log(dupes)
+
         new_dupes = []
+
+        has_repack_in_uuid = "repack" in meta.get('uuid', '').lower()
+        video_encode = meta.get("video_encode")
+        if video_encode is not None:
+            has_encoder_in_name = video_encode.lower()
+            normalized_encoder = self.normalize_filename(has_encoder_in_name)
+        else:
+            normalized_encoder = False
+        has_is_disc = bool(meta.get('is_disc', False))
+        target_hdr = self.refine_hdr_terms(meta.get("hdr"))
+        target_season = meta.get("season")
+        target_episode = meta.get("episode")
+        target_resolution = meta.get("resolution")
+        tag = meta.get("tag").lower()
+        is_dvd = meta['is_disc'] == "DVD"
+
+        attribute_checks = [
+            {
+                "key": "repack",
+                "uuid_flag": has_repack_in_uuid,
+                "condition": lambda each: meta['tag'].lower() in each and has_repack_in_uuid and "repack" not in each.lower(),
+                "exclude_msg": lambda each: f"Excluding result because it lacks 'repack' and matches tag '{meta['tag']}': {each}"
+            },
+            {
+                "key": "remux",
+                "uuid_flag": "remux" in meta.get('name', '').lower(),
+                "condition": lambda each: "remux" in each.lower(),
+                "exclude_msg": lambda each: f"Excluding result due to 'remux' mismatch: {each}"
+            },
+            {
+                "key": "uhd",
+                "uuid_flag": "uhd" in meta.get('name', '').lower(),
+                "condition": lambda each: "uhd" in each.lower(),
+                "exclude_msg": lambda each: f"Excluding result due to 'UHD' mismatch: {each}"
+            },
+            {
+                "key": "webdl",
+                "uuid_flag": "web-dl" in meta.get('name', '').lower(),
+                "condition": lambda each: "webdl" in each.lower() or "web-dl" in each.lower(),
+                "exclude_msg": lambda each: f"Excluding result due to 'WEBDL' mismatch: {each}"
+            },
+            {
+                "key": "hdtv",
+                "uuid_flag": "hdtv" in meta.get('name', '').lower(),
+                "condition": lambda each: "hdtv" in each.lower(),
+                "exclude_msg": lambda each: f"Excluding result due to 'HDTV' mismatch: {each}"
+            },
+        ]
+
+        def log_exclusion(reason, item):
+            if meta['debug']:
+                console.log(f"[yellow]Excluding result due to {reason}: {item}")
+
+        def process_exclusion(each):
+            """
+            Determine if an entry should be excluded.
+            Returns True if the entry should be excluded, otherwise allowed as dupe.
+            """
+            normalized = self.normalize_filename(each)
+            file_hdr = self.refine_hdr_terms(normalized)
+
+            if meta['debug']:
+                console.log(f"[debug] Evaluating dupe: {each}")
+                console.log(f"[debug] Normalized dupe: {normalized}")
+                console.log(f"[debug] File HDR terms: {file_hdr}")
+                console.log(f"[debug] Target HDR terms: {target_hdr}")
+                console.log(f"[debug] TAG: {tag}")
+                console.log("[debug] Evaluating repack condition:")
+                console.log(f"  has_repack_in_uuid: {has_repack_in_uuid}")
+                console.log(f"  'repack' in each.lower(): {'repack' in each.lower()}")
+                console.log(f"[debug] meta['uuid']: {meta.get('uuid', '')}")
+                console.log(f"[debug] meta['tag']: {meta.get('tag', '').lower()}")
+
+            if has_is_disc and each.lower().endswith(".m2ts"):
+                return False
+
+            if has_is_disc and re.search(r'\.\w{2,4}$', each):
+                log_exclusion("file extension mismatch (is_disc=True)", each)
+                return True
+
+            if not is_dvd:
+                if target_resolution and target_resolution not in each:
+                    log_exclusion(f"resolution '{target_resolution}' mismatch", each)
+                    return True
+
+            for check in attribute_checks:
+                if check["key"] == "repack":
+                    if has_repack_in_uuid and "repack" not in normalized:
+                        if tag and tag in normalized:
+                            log_exclusion("missing 'repack'", each)
+                            return True
+                elif check["uuid_flag"] != check["condition"](each):
+                    log_exclusion(f"{check['key']} mismatch", each)
+                    return True
+
+            if not is_dvd:
+                if not self.has_matching_hdr(file_hdr, target_hdr, meta):
+                    log_exclusion(f"HDR mismatch: Expected {target_hdr}, got {file_hdr}", each)
+                    return True
+
+            season_episode_match = self.is_season_episode_match(normalized, target_season, target_episode)
+            if meta['debug']:
+                console.log(f"[debug] Season/Episode match result: {season_episode_match}")
+            if not season_episode_match:
+                log_exclusion("season/episode mismatch", each)
+                return True
+
+            if normalized_encoder and normalized_encoder in normalized:
+                log_exclusion(f"Encoder '{has_encoder_in_name}' mismatch", each)
+                return False
+
+            console.log(f"[debug] Passed all checks: {each}")
+            return False
+
         for each in dupes:
-            if meta.get('sd', 0) == 1:
-                remove_set = set()
-            else:
-                remove_set = set({meta['resolution']})
-            search_combos = [
-                {
-                    'search': meta['hdr'],
-                    'search_for': {'HDR', 'PQ10'},
-                    'update': {'HDR|PQ10'}
-                },
-                {
-                    'search': meta['hdr'],
-                    'search_for': {'DV'},
-                    'update': {'DV|DoVi'}
-                },
-                {
-                    'search': meta['hdr'],
-                    'search_not': {'DV', 'DoVi', 'HDR', 'PQ10'},
-                    'update': {'!(DV)|(DoVi)|(HDR)|(PQ10)'}
-                },
-                {
-                    'search': str(meta.get('tv_pack', 0)),
-                    'search_for': '1',
-                    'update': {rf"{meta['season']}(?!E\d+)"}
-                },
-                {
-                    'search': meta['episode'],
-                    'search_for': meta['episode'],
-                    'update': {meta['season'], meta['episode']}
-                }
-            ]
-            search_matches = [
-                {
-                    'if': {'REMUX', 'WEBDL', 'WEBRip', 'HDTV'},
-                    'in': meta['type']
-                }
-            ]
-            for s in search_combos:
-                if s.get('search_for') not in (None, ''):
-                    if any(re.search(x, s['search'], flags=re.IGNORECASE) for x in s['search_for']):
-                        remove_set.update(s['update'])
-                if s.get('search_not') not in (None, ''):
-                    if not any(re.search(x, s['search'], flags=re.IGNORECASE) for x in s['search_not']):
-                        remove_set.update(s['update'])
-            for sm in search_matches:
-                for a in sm['if']:
-                    if a in sm['in']:
-                        remove_set.add(a)
-
-            search = each.lower().replace('-', '').replace(' ', '').replace('.', '')
-            for x in remove_set.copy():
-                if "|" in x:
-                    look_for = x.split('|')
-                    for y in look_for:
-                        if y.lower() in search:
-                            if x in remove_set:
-                                remove_set.remove(x)
-                            remove_set.add(y)
-
-            allow = True
-            for x in remove_set:
-                if not x.startswith("!"):
-                    if not re.search(x, search, flags=re.I):
-                        allow = False
-                else:
-                    if re.search(x.replace("!", "", 1), search, flags=re.I) not in (None, False):
-                        allow = False
-            if allow and each not in new_dupes:
+            console.log(f"[debug] Evaluating dupe: {each}")
+            if not process_exclusion(each):
                 new_dupes.append(each)
+
+        if meta['debug']:
+            console.log(f"[cyan]Final dupes: {new_dupes}")
+
         return new_dupes
+
+    def normalize_filename(self, filename):
+        """
+        Normalize a filename for easier matching.
+        Retain season/episode information in the format SxxExx.
+        """
+        normalized = filename.lower().replace("-", " -").replace(" ", " ").replace(".", " ")
+
+        return normalized
+
+    def is_season_episode_match(self, filename, target_season, target_episode):
+        """
+        Check if the filename matches the given season and episode.
+        """
+        if target_season:
+            target_season = int(str(target_season).lstrip('sS'))
+        if target_episode:
+            target_episode = int(str(target_episode).lstrip('eE'))
+
+        season_pattern = f"s{target_season:02}" if target_season else None
+        episode_pattern = f"e{target_episode:02}" if target_episode else None
+
+        if season_pattern and episode_pattern:
+            return season_pattern in filename and episode_pattern in filename
+        if season_pattern:
+            return season_pattern in filename
+        if episode_pattern:
+            return episode_pattern in filename
+        return True
+
+    def refine_hdr_terms(self, hdr):
+        """
+        Normalize HDR terms for consistent comparison.
+        Simplifies all HDR entries to 'HDR' and DV entries to 'DV'.
+        """
+        if hdr is None:
+            return set()
+        hdr = hdr.upper()
+        terms = set()
+        if "DV" in hdr or "DOVI" in hdr:
+            terms.add("DV")
+        if "HDR" in hdr:  # Any HDR-related term is normalized to 'HDR'
+            terms.add("HDR")
+        return terms
+
+    def has_matching_hdr(self, file_hdr, target_hdr, meta):
+        """
+        Check if the HDR terms match or are compatible.
+        """
+        def simplify_hdr(hdr_set):
+            """Simplify HDR terms to just HDR and DV."""
+            simplified = set()
+            if any(h in hdr_set for h in {"HDR", "HDR10", "HDR10+"}):
+                simplified.add("HDR")
+            if "DV" in hdr_set or "DOVI" in hdr_set:
+                simplified.add("DV")
+                if "framestor" in meta['tag'].lower():
+                    simplified.add("HDR")
+            return simplified
+
+        file_hdr_simple = simplify_hdr(file_hdr)
+        target_hdr_simple = simplify_hdr(target_hdr)
+
+        return file_hdr_simple == target_hdr_simple
+
+    class MediaInfoParser:
+        # Language to ISO country code mapping
+        LANGUAGE_CODE_MAP = {
+            "afrikaans": ("https://ptpimg.me/i9pt6k.png", "20"),
+            "albanian": ("https://ptpimg.me/sfhik8.png", "20"),
+            "amharic": ("https://ptpimg.me/zm816y.png", "20"),
+            "arabic": ("https://ptpimg.me/5g8i9u.png", "26x10"),
+            "armenian": ("https://ptpimg.me/zm816y.png", "20"),
+            "azerbaijani": ("https://ptpimg.me/h3rbe0.png", "20"),
+            "basque": ("https://ptpimg.me/xj51b9.png", "20"),
+            "belarusian": ("https://ptpimg.me/iushg1.png", "20"),
+            "bengali": ("https://ptpimg.me/jq996n.png", "20"),
+            "bosnian": ("https://ptpimg.me/19t9rv.png", "20"),
+            "brazilian": ("https://ptpimg.me/p8sgla.png", "20"),
+            "bulgarian": ("https://ptpimg.me/un9dc6.png", "20"),
+            "catalan": ("https://ptpimg.me/v4h5bf.png", "20"),
+            "chinese": ("https://ptpimg.me/ea3yv3.png", "20"),
+            "croatian": ("https://ptpimg.me/rxi533.png", "20"),
+            "czech": ("https://ptpimg.me/5m75n3.png", "20"),
+            "danish": ("https://ptpimg.me/m35c41.png", "20"),
+            "dutch": ("https://ptpimg.me/6nmwpx.png", "20"),
+            "dzongkha": ("https://ptpimg.me/56e7y5.png", "20"),
+            "english": ("https://ptpimg.me/ine2fd.png", "25x10"),
+            "english (gb)": ("https://ptpimg.me/a9w539.png", "20"),
+            "estonian": ("https://ptpimg.me/z25pmk.png", "20"),
+            "filipino": ("https://ptpimg.me/9d3z9w.png", "20"),
+            "finnish": ("https://ptpimg.me/p4354c.png", "20"),
+            "french (canada)": ("https://ptpimg.me/ei4s6u.png", "20"),
+            "french canadian": ("https://ptpimg.me/ei4s6u.png", "20"),
+            "french": ("https://ptpimg.me/m7mfoi.png", "20"),
+            "galician": ("https://ptpimg.me/xj51b9.png", "20"),
+            "georgian": ("https://ptpimg.me/pp412q.png", "20"),
+            "german": ("https://ptpimg.me/dw8d04.png", "30x10"),
+            "greek": ("https://ptpimg.me/px1u3e.png", "20"),
+            "gujarati": ("https://ptpimg.me/d0l479.png", "20"),
+            "haitian creole": ("https://ptpimg.me/f64wlp.png", "20"),
+            "hebrew": ("https://ptpimg.me/5jw1jp.png", "20"),
+            "hindi": ("https://ptpimg.me/d0l479.png", "20"),
+            "hungarian": ("https://ptpimg.me/fr4aj7.png", "30x10"),
+            "icelandic": ("https://ptpimg.me/40o553.png", "20"),
+            "indonesian": ("https://ptpimg.me/f00c8u.png", "20"),
+            "irish": ("https://ptpimg.me/71x9mk.png", "20"),
+            "italian": ("https://ptpimg.me/ao762a.png", "20"),
+            "japanese": ("https://ptpimg.me/o1amm3.png", "20"),
+            "kannada": ("https://ptpimg.me/d0l479.png", "20"),
+            "kazakh": ("https://ptpimg.me/tq1h8b.png", "20"),
+            "khmer": ("https://ptpimg.me/0p1tli.png", "20"),
+            "korean": ("https://ptpimg.me/2tvwgn.png", "20"),
+            "kurdish": ("https://ptpimg.me/g290wo.png", "20"),
+            "kyrgyz": ("https://ptpimg.me/336unh.png", "20"),
+            "lao": ("https://ptpimg.me/n3nan1.png", "20"),
+            "latin american": ("https://ptpimg.me/11350x.png", "20"),
+            "latvian": ("https://ptpimg.me/3x2y1b.png", "25x10"),
+            "lithuanian": ("https://ptpimg.me/b444z8.png", "20"),
+            "luxembourgish": ("https://ptpimg.me/52x189.png", "20"),
+            "macedonian": ("https://ptpimg.me/2g5lva.png", "20"),
+            "malagasy": ("https://ptpimg.me/n5120r.png", "20"),
+            "malay": ("https://ptpimg.me/02e17w.png", "30x10"),
+            "malayalam": ("https://ptpimg.me/d0l479.png", "20"),
+            "maltese": ("https://ptpimg.me/ua46c2.png", "20"),
+            "maori": ("https://ptpimg.me/2fw03g.png", "20"),
+            "marathi": ("https://ptpimg.me/d0l479.png", "20"),
+            "mongolian": ("https://ptpimg.me/z2h682.png", "20"),
+            "nepali": ("https://ptpimg.me/5yd3sp.png", "20"),
+            "norwegian": ("https://ptpimg.me/1t11u4.png", "20"),
+            "pashto": ("https://ptpimg.me/i9pt6k.png", "20"),
+            "persian": ("https://ptpimg.me/i0y103.png", "20"),
+            "polish": ("https://ptpimg.me/m73uwa.png", "20"),
+            "portuguese": ("https://ptpimg.me/5j1a7q.png", "20"),
+            "portuguese (brazil)": ("https://ptpimg.me/p8sgla.png", "20"),
+            "punjabi": ("https://ptpimg.me/d0l479.png", "20"),
+            "romanian": ("https://ptpimg.me/ux94x0.png", "20"),
+            "russian": ("https://ptpimg.me/v33j64.png", "20"),
+            "samoan": ("https://ptpimg.me/8nt3zq.png", "20"),
+            "serbian": ("https://ptpimg.me/2139p2.png", "20"),
+            "slovak": ("https://ptpimg.me/70994n.png", "20"),
+            "slovenian": ("https://ptpimg.me/61yp81.png", "25x10"),
+            "somali": ("https://ptpimg.me/320pa6.png", "20"),
+            "spanish": ("https://ptpimg.me/xj51b9.png", "20"),
+            "spanish (latin america)": ("https://ptpimg.me/11350x.png", "20"),
+            "swahili": ("https://ptpimg.me/d0l479.png", "20"),
+            "swedish": ("https://ptpimg.me/082090.png", "20"),
+            "tamil": ("https://ptpimg.me/d0l479.png", "20"),
+            "telugu": ("https://ptpimg.me/d0l479.png", "20"),
+            "thai": ("https://ptpimg.me/38ru43.png", "20"),
+            "turkish": ("https://ptpimg.me/g4jg39.png", "20"),
+            "ukrainian": ("https://ptpimg.me/d8fp6k.png", "20"),
+            "urdu": ("https://ptpimg.me/z23gg5.png", "20"),
+            "uzbek": ("https://ptpimg.me/89854s.png", "20"),
+            "vietnamese": ("https://ptpimg.me/qnuya2.png", "20"),
+            "welsh": ("https://ptpimg.me/a9w539.png", "20"),
+            "xhosa": ("https://ptpimg.me/7teg09.png", "20"),
+            "yiddish": ("https://ptpimg.me/5jw1jp.png", "20"),
+            "yoruba": ("https://ptpimg.me/9l34il.png", "20"),
+            "zulu": ("https://ptpimg.me/7teg09.png", "20")
+        }
+
+        def parse_mediainfo(self, mediainfo_text):
+            # Patterns for matching sections and fields
+            section_pattern = re.compile(r"^(General|Video|Audio|Text|Menu)(?:\s#\d+)?", re.IGNORECASE)
+            parsed_data = {"general": {}, "video": [], "audio": [], "text": []}
+            current_section = None
+            current_track = {}
+
+            # Field lists based on PHP definitions
+            general_fields = {'file_name', 'format', 'duration', 'file_size', 'bit_rate'}
+            video_fields = {
+                'format', 'format_version', 'codec', 'width', 'height', 'stream_size',
+                'framerate_mode', 'frame_rate', 'aspect_ratio', 'bit_rate', 'bit_rate_mode', 'bit_rate_nominal',
+                'bit_pixel_frame', 'bit_depth', 'language', 'format_profile',
+                'color_primaries', 'title', 'scan_type', 'transfer_characteristics', 'hdr_format'
+            }
+            audio_fields = {
+                'codec', 'format', 'bit_rate', 'channels', 'title', 'language', 'format_profile', 'stream_size'
+            }
+            # text_fields = {'title', 'language'}
+
+            # Split MediaInfo by lines and process each line
+            for line in mediainfo_text.splitlines():
+                line = line.strip()
+
+                # Detect a new section
+                section_match = section_pattern.match(line)
+                if section_match:
+                    # Save the last track data if moving to a new section
+                    if current_section and current_track:
+                        if current_section in ["video", "audio", "text"]:
+                            parsed_data[current_section].append(current_track)
+                        else:
+                            parsed_data[current_section] = current_track
+                        # Debug output for finalizing the current track data
+                        # print(f"Final processed track data for section '{current_section}': {current_track}")
+                        current_track = {}  # Reset current track
+
+                    # Update the current section
+                    current_section = section_match.group(1).lower()
+                    continue
+
+                # Split each line on the first colon to separate property and value
+                if ":" in line:
+                    property_name, property_value = map(str.strip, line.split(":", 1))
+                    property_name = property_name.lower().replace(" ", "_")
+
+                    # Add property if it's a recognized field for the current section
+                    if current_section == "general" and property_name in general_fields:
+                        current_track[property_name] = property_value
+                    elif current_section == "video" and property_name in video_fields:
+                        current_track[property_name] = property_value
+                    elif current_section == "audio" and property_name in audio_fields:
+                        current_track[property_name] = property_value
+                    elif current_section == "text":
+                        # Processing specific properties for text
+                        # Process title field
+                        if property_name == "title" and "title" not in current_track:
+                            title_lower = property_value.lower()
+                            # print(f"\nProcessing Title: '{property_value}'")  # Debugging output
+
+                            # Store the title as-is since it should remain descriptive
+                            current_track["title"] = property_value
+                            # print(f"Stored title: '{property_value}'")
+
+                            # If there's an exact match in LANGUAGE_CODE_MAP, add country code to language field
+                            if title_lower in self.LANGUAGE_CODE_MAP:
+                                country_code, size = self.LANGUAGE_CODE_MAP[title_lower]
+                                current_track["language"] = f"[img={size}]{country_code}[/img]"
+                                # print(f"Exact match found for title '{title_lower}' with country code: {country_code}")
+
+                        # Process language field only if it hasn't already been set
+                        elif property_name == "language" and "language" not in current_track:
+                            language_lower = property_value.lower()
+                            # print(f"\nProcessing Language: '{property_value}'")  # Debugging output
+
+                            if language_lower in self.LANGUAGE_CODE_MAP:
+                                country_code, size = self.LANGUAGE_CODE_MAP[language_lower]
+                                current_track["language"] = f"[img={size}]{country_code}[/img]"
+                                # print(f"Matched language '{language_lower}' to country code: {country_code}")
+                            else:
+                                # If no match in LANGUAGE_CODE_MAP, store language as-is
+                                current_track["language"] = property_value
+                                # print(f"No match found for language '{property_value}', stored as-is.")
+
+            # Append the last track to the parsed data if it exists
+            if current_section and current_track:
+                if current_section in ["video", "audio", "text"]:
+                    parsed_data[current_section].append(current_track)
+                else:
+                    parsed_data[current_section] = current_track
+                # Final debug output for the last track data
+                # print(f"Final processed track data for last section '{current_section}': {current_track}")
+
+            # Debug output for the complete parsed_data
+            # print("\nComplete Parsed Data:")
+            # for section, data in parsed_data.items():
+            #    print(f"{section}: {data}")
+
+            return parsed_data
+
+        def format_bbcode(self, parsed_mediainfo):
+            bbcode_output = "\n"
+
+            # Format General Section
+            if "general" in parsed_mediainfo:
+                bbcode_output += "[b]General[/b]\n"
+                for prop, value in parsed_mediainfo["general"].items():
+                    bbcode_output += f"[b]{prop.replace('_', ' ').capitalize()}:[/b] {value}\n"
+
+            # Format Video Section
+            if "video" in parsed_mediainfo:
+                bbcode_output += "\n[b]Video[/b]\n"
+                for track in parsed_mediainfo["video"]:
+                    for prop, value in track.items():
+                        bbcode_output += f"[b]{prop.replace('_', ' ').capitalize()}:[/b] {value}\n"
+
+            # Format Audio Section
+            if "audio" in parsed_mediainfo:
+                bbcode_output += "\n[b]Audio[/b]\n"
+                for index, track in enumerate(parsed_mediainfo["audio"], start=1):  # Start enumeration at 1
+                    parts = [f"{index}."]  # Start with track number without a trailing slash
+
+                    # Language flag image
+                    language = track.get("language", "").lower()
+                    result = self.LANGUAGE_CODE_MAP.get(language)
+
+                    # Check if the language was found in LANGUAGE_CODE_MAP
+                    if result is not None:
+                        country_code, size = result
+                        parts.append(f"[img={size}]{country_code}[/img]")
+                    else:
+                        # If language is not found, use a fallback or display the language as plain text
+                        parts.append(language.capitalize() if language else "")
+
+                    # Other properties to concatenate
+                    properties = ["language", "codec", "format", "channels", "bit_rate", "format_profile", "stream_size"]
+                    for prop in properties:
+                        if prop in track and track[prop]:  # Only add non-empty properties
+                            parts.append(track[prop])
+
+                    # Join parts (starting from index 1, after the track number) with slashes and add to bbcode_output
+                    bbcode_output += f"{parts[0]} " + " / ".join(parts[1:]) + "\n"
+
+            # Format Text Section - Centered with flags or text, spaced apart
+            if "text" in parsed_mediainfo:
+                bbcode_output += "\n[b]Subtitles[/b]\n"
+                subtitle_entries = []
+                for track in parsed_mediainfo["text"]:
+                    language_display = track.get("language", "")
+                    subtitle_entries.append(language_display)
+                bbcode_output += " ".join(subtitle_entries)
+
+            bbcode_output += "\n"
+            return bbcode_output

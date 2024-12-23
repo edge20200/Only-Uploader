@@ -22,7 +22,7 @@ class HDB():
         self.source_flag = 'HDBits'
         self.username = config['TRACKERS']['HDB'].get('username', '').strip()
         self.passkey = config['TRACKERS']['HDB'].get('passkey', '').strip()
-        self.rehost_images = config['TRACKERS']['HDB'].get('img_rehost', False)
+        self.rehost_images = config['TRACKERS']['HDB'].get('img_rehost', True)
         self.signature = None
         self.banned_groups = [""]
 
@@ -196,7 +196,7 @@ class HDB():
 
         return hdb_name
 
-    async def upload(self, meta):
+    async def upload(self, meta, disctype):
         common = COMMON(config=self.config)
         await common.edit_torrent(meta, self.tracker, self.source_flag)
         await self.edit_desc(meta)
@@ -215,7 +215,7 @@ class HDB():
             return
 
         # Download new .torrent from site
-        hdb_desc = open(f"{meta['base_dir']}/tmp/{meta['uuid']}/[{self.tracker}]DESCRIPTION.txt", 'r').read()
+        hdb_desc = open(f"{meta['base_dir']}/tmp/{meta['uuid']}/[{self.tracker}]DESCRIPTION.txt", 'r', encoding='utf-8').read()
         torrent_path = f"{meta['base_dir']}/tmp/{meta['uuid']}/[{self.tracker}]{meta['clean_name']}.torrent"
         torrent = Torrent.read(torrent_path)
 
@@ -317,7 +317,7 @@ class HDB():
                         raise UploadException(f"Upload to HDB Failed: result URL {up.url} ({up.status_code}) was not expected", 'red')  # noqa F405
         return
 
-    async def search_existing(self, meta):
+    async def search_existing(self, meta, disctype):
         dupes = []
         console.print("[yellow]Searching for existing torrents on site...")
         url = "https://hdbits.org/api/torrents"
@@ -415,8 +415,8 @@ class HDB():
         return
 
     async def edit_desc(self, meta):
-        base = open(f"{meta['base_dir']}/tmp/{meta['uuid']}/DESCRIPTION.txt", 'r').read()
-        with open(f"{meta['base_dir']}/tmp/{meta['uuid']}/[{self.tracker}]DESCRIPTION.txt", 'w') as descfile:
+        base = open(f"{meta['base_dir']}/tmp/{meta['uuid']}/DESCRIPTION.txt", 'r', encoding='utf-8').read()
+        with open(f"{meta['base_dir']}/tmp/{meta['uuid']}/[{self.tracker}]DESCRIPTION.txt", 'w', encoding='utf-8') as descfile:
             from src.bbcode import BBCODE
             # Add This line for all web-dls
             if meta['type'] == 'WEBDL' and meta.get('service_longname', '') != '' and meta.get('description', None) is None:

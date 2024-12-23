@@ -35,7 +35,7 @@ class PTP():
         self.user_agent = f'Upload Assistant/2.1 ({platform.system()} {platform.release()})'
         self.banned_groups = ['aXXo', 'BMDru', 'BRrip', 'CM8', 'CrEwSaDe', 'CTFOH', 'd3g', 'DNL', 'FaNGDiNG0', 'HD2DVD', 'HDTime', 'ION10', 'iPlanet',
                               'KiNGDOM', 'mHD', 'mSD', 'nHD', 'nikt0', 'nSD', 'NhaNc3', 'OFT', 'PRODJi', 'SANTi', 'SPiRiT', 'STUTTERSHIT', 'ViSION', 'VXT',
-                              'WAF', 'x0r', 'YIFY',]
+                              'WAF', 'x0r', 'YIFY', 'LAMA', 'WORLD']
 
         self.sub_lang_map = {
             ("Arabic", "ara", "ar"): 22,
@@ -46,9 +46,9 @@ class PTP():
             ("Czech", "cze", "cz", "cs"): 30,
             ("Danish", "dan", "da"): 10,
             ("Dutch", "dut", "nl"): 9,
-            ("English", "eng", "en", "English (CC)", "English - SDH"): 3,
-            ("English - Forced", "English (Forced)", "en (Forced)"): 50,
-            ("English Intertitles", "English (Intertitles)", "English - Intertitles", "en (Intertitles)"): 51,
+            ("English", "eng", "en", "en-US", "English (CC)", "English - SDH"): 3,
+            ("English - Forced", "English (Forced)", "en (Forced)", "en-US (Forced)"): 50,
+            ("English Intertitles", "English (Intertitles)", "English - Intertitles", "en (Intertitles)", "en-US (Intertitles)"): 51,
             ("Estonian", "est", "et"): 38,
             ("Finnish", "fin", "fi"): 15,
             ("French", "fre", "fr"): 5,
@@ -185,7 +185,7 @@ class PTP():
         except Exception:
             return None, None, None
 
-    async def get_ptp_description(self, ptp_torrent_id, is_disc):
+    async def get_ptp_description(self, ptp_torrent_id, meta, is_disc):
         params = {
             'id': ptp_torrent_id,
             'action': 'get_description'
@@ -201,28 +201,36 @@ class PTP():
         await asyncio.sleep(1)
 
         ptp_desc = response.text
-        # console.print(f"[yellow]Raw description received:\n{ptp_desc[:3800]}...")  # Show first 500 characters for brevity
+        # console.print(f"[yellow]Raw description received:\n{ptp_desc[:6800]}...")  # Show first 500 characters for brevity
 
         bbcode = BBCODE()
         desc, imagelist = bbcode.clean_ptp_description(ptp_desc, is_disc)
 
         console.print("[bold green]Successfully grabbed description from PTP")
-        console.print(f"[cyan]Description after cleaning:[yellow]\n{desc[:1000]}...")  # Show first 1000 characters for brevity
+        console.print(f"[cyan]Description after cleaning:[yellow]\n{desc[:1000]}...", markup=False)  # Show first 1000 characters for brevity
 
-        # Allow user to edit or discard the description
-        console.print("[cyan]Do you want to edit, discard or keep the description?[/cyan]")
-        edit_choice = input("Enter 'e' to edit, 'd' to discard, or press Enter to keep it as is: ")
+        if not meta.get('skipit') and not meta['unattended']:
+            # Allow user to edit or discard the description
+            console.print("[cyan]Do you want to edit, discard or keep the description?[/cyan]")
+            edit_choice = input("Enter 'e' to edit, 'd' to discard, or press Enter to keep it as is: ")
 
-        if edit_choice.lower() == 'e':
-            edited_description = click.edit(desc)
-            if edited_description:
-                desc = edited_description.strip()
-            console.print(f"[green]Final description after editing:[/green] {desc}")
-        elif edit_choice.lower() == 'd':
-            desc = None
-            console.print("[yellow]Description discarded.[/yellow]")
+            if edit_choice.lower() == 'e':
+                edited_description = click.edit(desc)
+                if edited_description:
+                    desc = edited_description.strip()
+                    meta['description'] = desc
+                    meta['saved_description'] = True
+                console.print(f"[green]Final description after editing:[/green] {desc}")
+            elif edit_choice.lower() == 'd':
+                desc = None
+                console.print("[yellow]Description discarded.[/yellow]")
+            else:
+                console.print("[green]Keeping the original description.[/green]")
+                meta['description'] = ptp_desc
+                meta['saved_description'] = True
         else:
-            console.print("[green]Keeping the original description.[/green]")
+            meta['description'] = ptp_desc
+            meta['saved_description'] = True
 
         return desc, imagelist
 
@@ -306,7 +314,7 @@ class PTP():
                 tags.append(each)
         return tags
 
-    async def search_existing(self, groupID, meta):
+    async def search_existing(self, groupID, meta, disctype):
         # Map resolutions to SD / HD / UHD
         quality = None
         if meta.get('sd', 0) == 1:  # 1 is SD
@@ -610,92 +618,212 @@ class PTP():
         from src.prep import Prep
         prep = Prep(screens=meta['screens'], img_host=meta['imghost'], config=self.config)
         base = open(f"{meta['base_dir']}/tmp/{meta['uuid']}/DESCRIPTION.txt", 'r', encoding="utf-8").read()
+        multi_screens = int(self.config['DEFAULT'].get('multiScreens', 2))
+        if multi_screens < 2:
+            multi_screens = 2
+            console.print("[yellow]PTP requires at least 2 screenshots for multi disc/file content, overriding config")
+
         with open(f"{meta['base_dir']}/tmp/{meta['uuid']}/[{self.tracker}]DESCRIPTION.txt", 'w', encoding="utf-8") as desc:
             images = meta['image_list']
             discs = meta.get('discs', [])
-            # For Discs
-            if len(discs) >= 1:
-                for i in range(len(discs)):
-                    each = discs[i]
-                    if each['type'] == "BDMV":
-                        desc.write(f"[mediainfo]{each['summary']}[/mediainfo]\n\n")
-                        if i == 0:
-                            base2ptp = self.convert_bbcode(base)
-                            if base2ptp.strip() != "":
-                                desc.write(base2ptp)
-                                desc.write("\n\n")
-                            mi_dump = each['summary']
-                        else:
-                            mi_dump = each['summary']
-                            if meta.get('vapoursynth', False) is True:
-                                use_vs = True
-                            else:
-                                use_vs = False
-                            ds = multiprocessing.Process(target=prep.disc_screenshots, args=(f"FILE_{i}", each['bdinfo'], meta['uuid'], meta['base_dir'], use_vs, [], meta.get('ffdebug', False), 2))
-                            ds.start()
-                            while ds.is_alive() is True:
-                                await asyncio.sleep(1)
-                            new_screens = glob.glob1(f"{meta['base_dir']}/tmp/{meta['uuid']}", f"FILE_{i}-*.png")
-                            images, dummy = prep.upload_screens(meta, 2, 1, 0, 2, new_screens, {})
+            filelist = meta.get('filelist', [])
 
-                    if each['type'] == "DVD":
-                        desc.write(f"[b][size=3]{each['name']}:[/size][/b]\n")
-                        desc.write(f"[mediainfo]{each['ifo_mi_full']}[/mediainfo]\n")
-                        desc.write(f"[mediainfo]{each['vob_mi_full']}[/mediainfo]\n")
-                        desc.write("\n")
-                        if i == 0:
-                            base2ptp = self.convert_bbcode(base)
-                            if base2ptp.strip() != "":
-                                desc.write(base2ptp)
-                                desc.write("\n\n")
-                        else:
-                            ds = multiprocessing.Process(target=prep.dvd_screenshots, args=(meta, i, 2))
-                            ds.start()
-                            while ds.is_alive() is True:
-                                await asyncio.sleep(1)
-                            new_screens = glob.glob1(f"{meta['base_dir']}/tmp/{meta['uuid']}", f"{meta['discs'][i]['name']}-*.png")
-                            images, dummy = prep.upload_screens(meta, 2, 1, 0, 2, new_screens, {})
-
-                    if len(images) > 0:
-                        for each in range(len(images[:int(meta['screens'])])):
-                            raw_url = images[each]['raw_url']
-                            desc.write(f"[img]{raw_url}[/img]\n")
+            # Handle single disc case
+            if len(discs) == 1:
+                each = discs[0]
+                new_screens = []
+                if each['type'] == "BDMV":
+                    desc.write(f"[mediainfo]{each['summary']}[/mediainfo]\n\n")
+                    base2ptp = self.convert_bbcode(base)
+                    if base2ptp.strip() != "":
+                        desc.write(base2ptp)
+                        desc.write("\n\n")
+                    for img_index in range(len(images[:int(meta['screens'])])):
+                        raw_url = meta['image_list'][img_index]['raw_url']
+                        desc.write(f"[img]{raw_url}[/img]\n")
                     desc.write("\n")
-            # For non-discs
-            elif len(meta.get('filelist', [])) >= 1:
-                for i in range(len(meta['filelist'])):
-                    file = meta['filelist'][i]
+                elif each['type'] == "DVD":
+                    desc.write(f"[b][size=3]{each['name']}:[/size][/b]\n")
+                    desc.write(f"[mediainfo]{each['ifo_mi_full']}[/mediainfo]\n")
+                    desc.write(f"[mediainfo]{each['vob_mi_full']}[/mediainfo]\n\n")
+                    base2ptp = self.convert_bbcode(base)
+                    if base2ptp.strip() != "":
+                        desc.write(base2ptp)
+                        desc.write("\n\n")
+                    for img_index in range(len(images[:int(meta['screens'])])):
+                        raw_url = meta['image_list'][img_index]['raw_url']
+                        desc.write(f"[img]{raw_url}[/img]\n")
+                    desc.write("\n")
+
+            # Handle multiple discs case
+            elif len(discs) > 1:
+                if 'retry_count' not in meta:
+                    meta['retry_count'] = 0
+                for i, each in enumerate(discs):
+                    new_images_key = f'new_images_disc_{i}'
+                    if each['type'] == "BDMV":
+                        if i == 0:
+                            desc.write(f"[mediainfo]{each['summary']}[/mediainfo]\n\n")
+                            base2ptp = self.convert_bbcode(base)
+                            if base2ptp.strip() != "":
+                                desc.write(base2ptp)
+                                desc.write("\n\n")
+                            for img_index in range(min(multi_screens, len(meta['image_list']))):
+                                raw_url = meta['image_list'][img_index]['raw_url']
+                                desc.write(f"[img]{raw_url}[/img]\n")
+                            desc.write("\n")
+                        else:
+                            desc.write(f"[mediainfo]{each['summary']}[/mediainfo]\n\n")
+                            base2ptp = self.convert_bbcode(base)
+                            if base2ptp.strip() != "":
+                                desc.write(base2ptp)
+                                desc.write("\n\n")
+                            if new_images_key in meta and meta[new_images_key]:
+                                for img in meta[new_images_key]:
+                                    raw_url = img['raw_url']
+                                    desc.write(f"[img]{raw_url}[/img]\n")
+                                desc.write("\n")
+                            else:
+                                meta['retry_count'] += 1
+                                meta[new_images_key] = []
+                                new_screens = glob.glob1(f"{meta['base_dir']}/tmp/{meta['uuid']}", f"FILE_{i}-*.png")
+                                if not new_screens:
+                                    use_vs = meta.get('vapoursynth', False)
+                                    ds = multiprocessing.Process(target=prep.disc_screenshots, args=(meta, f"FILE_{i}", each['bdinfo'], meta['uuid'], meta['base_dir'], use_vs, [], meta.get('ffdebug', False), multi_screens, True))
+                                    ds.start()
+                                    while ds.is_alive() is True:
+                                        await asyncio.sleep(1)
+                                    new_screens = glob.glob1(f"{meta['base_dir']}/tmp/{meta['uuid']}", f"FILE_{i}-*.png")
+                                if new_screens:
+                                    uploaded_images, _ = prep.upload_screens(meta, multi_screens, 1, 0, 2, new_screens, {new_images_key: meta[new_images_key]})
+                                    for img in uploaded_images:
+                                        meta[new_images_key].append({
+                                            'img_url': img['img_url'],
+                                            'raw_url': img['raw_url'],
+                                            'web_url': img['web_url']
+                                        })
+                                        raw_url = img['raw_url']
+                                        desc.write(f"[img]{raw_url}[/img]\n")
+                                    desc.write("\n")
+
+                                meta_filename = f"{meta['base_dir']}/tmp/{meta['uuid']}/meta.json"
+                                with open(meta_filename, 'w') as f:
+                                    json.dump(meta, f, indent=4)
+
+                    elif each['type'] == "DVD":
+                        if i == 0:
+                            desc.write(f"[b][size=3]{each['name']}:[/size][/b]\n")
+                            desc.write(f"[mediainfo]{each['ifo_mi_full']}[/mediainfo]\n")
+                            desc.write(f"[mediainfo]{each['vob_mi_full']}[/mediainfo]\n\n")
+                            base2ptp = self.convert_bbcode(base)
+                            if base2ptp.strip() != "":
+                                desc.write(base2ptp)
+                                desc.write("\n\n")
+                            for img_index in range(min(multi_screens, len(meta['image_list']))):
+                                raw_url = meta['image_list'][img_index]['raw_url']
+                                desc.write(f"[img]{raw_url}[/img]\n")
+                            desc.write("\n")
+                        else:
+                            desc.write(f"[b][size=3]{each['name']}:[/size][/b]\n")
+                            desc.write(f"[mediainfo]{each['ifo_mi_full']}[/mediainfo]\n")
+                            desc.write(f"[mediainfo]{each['vob_mi_full']}[/mediainfo]\n\n")
+                            base2ptp = self.convert_bbcode(base)
+                            if base2ptp.strip() != "":
+                                desc.write(base2ptp)
+                                desc.write("\n\n")
+                            if new_images_key in meta and meta[new_images_key]:
+                                for img in meta[new_images_key]:
+                                    raw_url = img['raw_url']
+                                    desc.write(f"[img]{raw_url}[/img]\n")
+                                desc.write("\n")
+                            else:
+                                meta['retry_count'] += 1
+                                meta[new_images_key] = []
+                                new_screens = glob.glob1(f"{meta['base_dir']}/tmp/{meta['uuid']}", f"{meta['discs'][i]['name']}-*.png")
+                                if not new_screens:
+                                    ds = multiprocessing.Process(target=prep.dvd_screenshots, args=(meta, i, multi_screens, True))
+                                    ds.start()
+                                    while ds.is_alive() is True:
+                                        await asyncio.sleep(1)
+                                    new_screens = glob.glob1(f"{meta['base_dir']}/tmp/{meta['uuid']}", f"{meta['discs'][i]['name']}-*.png")
+                                if new_screens:
+                                    uploaded_images, _ = prep.upload_screens(meta, multi_screens, 1, 0, 2, new_screens, {new_images_key: meta[new_images_key]})
+                                    for img in uploaded_images:
+                                        meta[new_images_key].append({
+                                            'img_url': img['img_url'],
+                                            'raw_url': img['raw_url'],
+                                            'web_url': img['web_url']
+                                        })
+                                        raw_url = img['raw_url']
+                                        desc.write(f"[img]{raw_url}[/img]\n")
+                                    desc.write("\n")
+
+                            meta_filename = f"{meta['base_dir']}/tmp/{meta['uuid']}/meta.json"
+                            with open(meta_filename, 'w') as f:
+                                json.dump(meta, f, indent=4)
+
+            # Handle single file case
+            elif len(filelist) == 1:
+                file = filelist[0]
+                if meta['type'] == 'WEBDL' and meta.get('service_longname', '') != '' and meta.get('description', None) is None and self.web_source is True:
+                    desc.write(f"[quote][align=center]This release is sourced from {meta['service_longname']}[/align][/quote]")
+                mi_dump = open(f"{meta['base_dir']}/tmp/{meta['uuid']}/MEDIAINFO.txt", 'r', encoding='utf-8').read()
+                desc.write(f"[mediainfo]{mi_dump}[/mediainfo]\n")
+                for img_index in range(len(images[:int(meta['screens'])])):
+                    raw_url = meta['image_list'][img_index]['raw_url']
+                    desc.write(f"[img]{raw_url}[/img]\n")
+                desc.write("\n")
+
+            # Handle multiple files case
+            elif len(filelist) > 1:
+                for i in range(len(filelist)):
+                    file = filelist[i]
                     if i == 0:
-                        # Add This line for all web-dls
                         if meta['type'] == 'WEBDL' and meta.get('service_longname', '') != '' and meta.get('description', None) is None and self.web_source is True:
                             desc.write(f"[quote][align=center]This release is sourced from {meta['service_longname']}[/align][/quote]")
                         mi_dump = open(f"{meta['base_dir']}/tmp/{meta['uuid']}/MEDIAINFO.txt", 'r', encoding='utf-8').read()
+                        desc.write(f"[mediainfo]{mi_dump}[/mediainfo]\n")
+                        for img_index in range(min(multi_screens, len(meta['image_list']))):
+                            raw_url = meta['image_list'][img_index]['raw_url']
+                            desc.write(f"[img]{raw_url}[/img]\n")
+                        desc.write("\n")
                     else:
-                        # Export Mediainfo
                         mi_dump = MediaInfo.parse(file, output="STRING", full=False, mediainfo_options={'inform_version': '1'})
-                        # mi_dump = mi_dump.replace(file, os.path.basename(file))
                         with open(f"{meta['base_dir']}/tmp/{meta['uuid']}/TEMP_PTP_MEDIAINFO.txt", "w", newline="", encoding="utf-8") as f:
                             f.write(mi_dump)
                         mi_dump = open(f"{meta['base_dir']}/tmp/{meta['uuid']}/TEMP_PTP_MEDIAINFO.txt", "r", encoding="utf-8").read()
-                        # Generate and upload screens for other files
-                        s = multiprocessing.Process(target=prep.screenshots, args=(file, f"FILE_{i}", meta['uuid'], meta['base_dir'], meta, 2))
-                        s.start()
-                        while s.is_alive() is True:
-                            await asyncio.sleep(3)
-                        new_screens = glob.glob1(f"{meta['base_dir']}/tmp/{meta['uuid']}", f"FILE_{i}-*.png")
-                        images, dummy = prep.upload_screens(meta, 2, 1, 0, 2, new_screens, {})
+                        desc.write(f"[mediainfo]{mi_dump}[/mediainfo]\n")
+                        new_images_key = f'new_images_file_{i}'
+                        if new_images_key in meta and meta[new_images_key]:
+                            for img in meta[new_images_key]:
+                                raw_url = img['raw_url']
+                                desc.write(f"[img]{raw_url}[/img]\n")
+                            desc.write("\n")
+                        else:
+                            meta['retry_count'] = meta.get('retry_count', 0) + 1
+                            meta[new_images_key] = []
+                            new_screens = glob.glob1(f"{meta['base_dir']}/tmp/{meta['uuid']}", f"FILE_{i}-*.png")
+                            if not new_screens:
+                                s = multiprocessing.Process(target=prep.screenshots, args=(file, f"FILE_{i}", meta['uuid'], meta['base_dir'], meta, multi_screens + 1, True, None))
+                                s.start()
+                                while s.is_alive() is True:
+                                    await asyncio.sleep(3)
+                                new_screens = glob.glob1(f"{meta['base_dir']}/tmp/{meta['uuid']}", f"FILE_{i}-*.png")
+                            if new_screens:
+                                uploaded_images, _ = prep.upload_screens(meta, multi_screens, 1, 0, 2, new_screens, {new_images_key: meta[new_images_key]})
+                                for img in uploaded_images:
+                                    meta[new_images_key].append({
+                                        'img_url': img['img_url'],
+                                        'raw_url': img['raw_url'],
+                                        'web_url': img['web_url']
+                                    })
+                                    raw_url = img['raw_url']
+                                    desc.write(f"[img]{raw_url}[/img]\n")
+                                desc.write("\n")
 
-                    desc.write(f"[mediainfo]{mi_dump}[/mediainfo]\n")
-                    if i == 0:
-                        base2ptp = self.convert_bbcode(base)
-                        if base2ptp.strip() != "":
-                            desc.write(base2ptp)
-                            desc.write("\n\n")
-                    if len(images) > 0:
-                        for each in range(len(images[:int(meta['screens'])])):
-                            raw_url = images[each]['raw_url']
-                            desc.write(f"[img]{raw_url}[/img]\n")
-                    desc.write("\n")
+                        meta_filename = f"{meta['base_dir']}/tmp/{meta['uuid']}/meta.json"
+                        with open(meta_filename, 'w') as f:
+                            json.dump(meta, f, indent=4)
 
     async def get_AntiCsrfToken(self, meta):
         if not os.path.exists(f"{meta['base_dir']}/data/cookies"):
@@ -758,7 +886,7 @@ class PTP():
         await common.edit_torrent(meta, self.tracker, self.source_flag)
         resolution, other_resolution = self.get_resolution(meta)
         await self.edit_desc(meta)
-        desc = open(f"{meta['base_dir']}/tmp/{meta['uuid']}/[{self.tracker}]DESCRIPTION.txt", "r").read()
+        desc = open(f"{meta['base_dir']}/tmp/{meta['uuid']}/[{self.tracker}]DESCRIPTION.txt", "r", encoding='utf-8').read()
         ptp_subtitles = self.get_subtitles(meta)
         ptp_trumpable = None
         if not any(x in [3, 50] for x in ptp_subtitles) or meta['hardcoded-subs']:
@@ -834,7 +962,7 @@ class PTP():
 
         return url, data
 
-    async def upload(self, meta, url, data):
+    async def upload(self, meta, url, data, disctype):
         torrent_filename = f"[{self.tracker}]{meta['clean_name']}.torrent"
         torrent_path = f"{meta['base_dir']}/tmp/{meta['uuid']}/{torrent_filename}"
         torrent = Torrent.read(torrent_path)

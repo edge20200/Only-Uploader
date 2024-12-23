@@ -75,13 +75,13 @@ class TL():
 
         raise NotImplementedError('Failed to determine TL category!')
 
-    async def upload(self, meta):
+    async def upload(self, meta, disctype):
         common = COMMON(config=self.config)
         await common.edit_torrent(meta, self.tracker, self.source_flag)
         cat_id = await self.get_cat_id(common, meta)
         await common.unit3d_edit_desc(meta, self.tracker, self.signature)
 
-        open_desc = open(f"{meta['base_dir']}/tmp/{meta['uuid']}/[{self.tracker}]DESCRIPTION.txt", 'a+')
+        open_desc = open(f"{meta['base_dir']}/tmp/{meta['uuid']}/[{self.tracker}]DESCRIPTION.txt", 'a+', encoding='utf-8')
 
         info_filename = 'BD_SUMMARY_00' if meta['bdinfo'] is not None else 'MEDIAINFO_CLEANPATH'
         open_info = open(f"{meta['base_dir']}/tmp/{meta['uuid']}/{info_filename}.txt", 'r', encoding='utf-8')
@@ -100,7 +100,7 @@ class TL():
             'category': cat_id
         }
         headers = {
-            'User-Agent': f'Upload Assistant/2.1 ({platform.system()} {platform.release()})'
+            'User-Agent': f'Upload Assistant/2.2 ({platform.system()} {platform.release()})'
         }
 
         if meta['debug'] is False:

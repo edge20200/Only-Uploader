@@ -6,6 +6,8 @@ from str2bool import str2bool
 import os
 import re
 import platform
+import bencodepy
+import cli_ui
 
 from src.trackers.COMMON import COMMON
 from src.console import console
@@ -29,7 +31,7 @@ class HUNO():
         self.banned_groups = ["4K4U, Bearfish, BiTOR, BONE, D3FiL3R, d3g, DTR, ELiTE, EVO, eztv, EzzRips, FGT, HashMiner, HETeam, HEVCBay, HiQVE, HR-DR, iFT, ION265, iVy, JATT, Joy, LAMA, m3th, MeGusta, MRN, Musafirboy, OEPlus, Pahe.in, PHOCiS, PSA, RARBG, RMTeam, ShieldBearer, SiQ, TBD, Telly, TSP, VXT, WKS, YAWNiX, YIFY, YTS"]
         pass
 
-    async def upload(self, meta):
+    async def upload(self, meta, disctype):
         common = COMMON(config=self.config)
         await common.unit3d_edit_desc(meta, self.tracker, self.signature)
         await common.edit_torrent(meta, self.tracker, self.source_flag)
@@ -41,18 +43,13 @@ class HUNO():
         else:
             anon = 1
 
-        # adding logic to check if its an encode or webrip and not HEVC as only HEVC encodes and webrips are allowed
-        if meta['video_codec'] != "HEVC" and (meta['type'] == "ENCODE" or meta['type'] == "WEBRIP"):
-            console.print('[bold red]Only x265/HEVC encodes are allowed')
-            return
-
         if meta['bdinfo'] is not None:
             mi_dump = None
             bd_dump = open(f"{meta['base_dir']}/tmp/{meta['uuid']}/BD_SUMMARY_00.txt", 'r', encoding='utf-8').read()
         else:
             mi_dump = open(f"{meta['base_dir']}/tmp/{meta['uuid']}/MEDIAINFO.txt", 'r', encoding='utf-8').read()
             bd_dump = None
-        desc = open(f"{meta['base_dir']}/tmp/{meta['uuid']}/[HUNO]DESCRIPTION.txt", 'r').read()
+        desc = open(f"{meta['base_dir']}/tmp/{meta['uuid']}/[HUNO]DESCRIPTION.txt", 'r', encoding='utf-8').read()
         open_torrent = open(f"{meta['base_dir']}/tmp/{meta['uuid']}/[HUNO]{meta['clean_name']}.torrent", 'rb')
         files = {'torrent': open_torrent}
         data = {
@@ -88,7 +85,7 @@ class HUNO():
                 data['internal'] = 0
 
         headers = {
-            'User-Agent': f'Upload Assistant/2.1 ({platform.system()} {platform.release()})'
+            'User-Agent': f'Upload Assistant/2.2 ({platform.system()} {platform.release()})'
         }
         params = {
             'api_token': tracker_config['api_key'].strip()
@@ -117,11 +114,33 @@ class HUNO():
 
         if dual:
             language = "DUAL"
-        elif 'mediainfo' in meta:
-            language = next(x for x in meta["mediainfo"]["media"]["track"] if x["@type"] == "Audio").get('Language_String', "English")
-            language = re.sub(r'\(.+\)', '', language)
+        else:
+            if not meta['is_disc']:
+                # Read the MEDIAINFO.txt file
+                media_info_path = f"{meta['base_dir']}/tmp/{meta['uuid']}/MEDIAINFO.txt"
+                with open(media_info_path, 'r', encoding='utf-8') as f:
+                    media_info_text = f.read()
+
+                # Extract the first audio section
+                first_audio_section = re.search(r'Audio\s+ID\s+:\s+2(.*?)\n\n', media_info_text, re.DOTALL)
+                if not first_audio_section:  # Fallback in case of a different structure
+                    first_audio_section = re.search(r'Audio(.*?)Text', media_info_text, re.DOTALL)
+
+                if first_audio_section:
+                    # Extract language information from the first audio track
+                    language_match = re.search(r'Language\s*:\s*(.+)', first_audio_section.group(1))
+                    if language_match:
+                        language = language_match.group(1).strip()
+                        language = re.sub(r'\(.+\)', '', language)  # Remove text in parentheses
+
+        # Handle special cases
         if language == "zxx":
             language = "Silent"
+        elif not language:
+            language = cli_ui.ask_string('No audio language present, you must enter one:')
+            if not language:
+                language = "Unknown"
+
         return f'{codec} {channels} {language}'
 
     def get_basename(self, meta):
@@ -134,9 +153,9 @@ class HUNO():
 
         basename = self.get_basename(meta)
         hc = meta.get('hardcoded-subs')
-        type = meta.get('type', "")
+        type = meta.get('type', "").upper()
         title = meta.get('title', "")
-        alt_title = meta.get('aka', "") # noqa F841
+        alt_title = meta.get('aka', "")  # noqa F841
         year = meta.get('year', "")
         resolution = meta.get('resolution', "")
         audio = self.get_audio(meta)
@@ -155,7 +174,7 @@ class HUNO():
         hdr = meta.get('hdr', "")
         if not hdr.strip():
             hdr = "SDR"
-        distributor = meta.get('distributor', "") # noqa F841
+        distributor = meta.get('distributor', "")  # noqa F841
         video_codec = meta.get('video_codec', "")
         video_encode = meta.get('video_encode', "").replace(".", "")
         if 'x265' in basename:
@@ -170,46 +189,46 @@ class HUNO():
         scale = "DS4K" if "DS4K" in basename.upper() else "RM4K" if "RM4K" in basename.upper() else ""
 
         # YAY NAMING FUN
-        if meta['category'] == "MOVIE": # MOVIE SPECIFIC
-            if type == "DISC": # Disk
+        if meta['category'] == "MOVIE":  # MOVIE SPECIFIC
+            if type == "DISC":  # Disk
                 if meta['is_disc'] == 'BDMV':
                     name = f"{title} ({year}) {three_d} {edition} ({resolution} {region} {uhd} {source} {hybrid} {video_codec} {hdr} {audio} {tag}) {repack}"
                 elif meta['is_disc'] == 'DVD':
                     name = f"{title} ({year}) {edition} ({resolution} {dvd_size} {hybrid} {video_codec} {hdr} {audio} {tag}) {repack}"
                 elif meta['is_disc'] == 'HDDVD':
                     name = f"{title} ({year}) {edition} ({resolution} {source} {hybrid} {video_codec} {hdr} {audio} {tag}) {repack}"
-            elif type == "REMUX" and source == "BluRay": # BluRay Remux
+            elif type == "REMUX" and source == "BluRay":  # BluRay Remux
                 name = f"{title} ({year}) {three_d} {edition} ({resolution} {uhd} {source} {hybrid} REMUX {video_codec} {hdr} {audio} {tag}) {repack}"
-            elif type == "REMUX" and source in ("PAL DVD", "NTSC DVD"): # DVD Remux
-                name = f"{title} ({year}) {edition} (DVD {hybrid} REMUX {video_codec} {hdr} {audio} {tag}) {repack}"
-            elif type == "ENCODE": # Encode
+            elif type == "REMUX" and source in ("PAL DVD", "NTSC DVD", "DVD"):  # DVD Remux
+                name = f"{title} ({year}) {edition} ({resolution} DVD {hybrid} REMUX {video_codec} {hdr} {audio} {tag}) {repack}"
+            elif type == "ENCODE":  # Encode
                 name = f"{title} ({year}) {edition} ({resolution} {scale} {uhd} {source} {hybrid} {video_encode} {hdr} {audio} {tag}) {repack}"
-            elif type in ("WEBDL", "WEBRIP"): # WEB
+            elif type in ("WEBDL", "WEBRIP"):  # WEB
                 name = f"{title} ({year}) {edition} ({resolution} {scale} {uhd} {service} WEB-DL {hybrid} {video_encode} {hdr} {audio} {tag}) {repack}"
-            elif type == "HDTV": # HDTV
+            elif type == "HDTV":  # HDTV
                 name = f"{title} ({year}) {edition} ({resolution} HDTV {hybrid} {video_encode} {audio} {tag}) {repack}"
-        elif meta['category'] == "TV": # TV SPECIFIC
-            if type == "DISC": # Disk
+        elif meta['category'] == "TV":  # TV SPECIFIC
+            if type == "DISC":  # Disk
                 if meta['is_disc'] == 'BDMV':
                     name = f"{title} ({search_year}) {season}{episode} {three_d} {edition} ({resolution} {region} {uhd} {source} {hybrid} {video_codec} {hdr} {audio} {tag}) {repack}"
                 if meta['is_disc'] == 'DVD':
                     name = f"{title} ({search_year}) {season}{episode} {edition} ({resolution} {dvd_size} {hybrid} {video_codec} {hdr} {audio} {tag}) {repack}"
                 elif meta['is_disc'] == 'HDDVD':
                     name = f"{title} ({search_year}) {season}{episode} {edition} ({resolution} {source} {hybrid} {video_codec} {hdr} {audio} {tag}) {repack}"
-            elif type == "REMUX" and source == "BluRay": # BluRay Remux
-                name = f"{title} ({search_year}) {season}{episode} {three_d} {edition} ({resolution} {uhd} {source} {hybrid} REMUX {video_codec} {hdr} {audio} {tag}) {repack}" # SOURCE
-            elif type == "REMUX" and source in ("PAL DVD", "NTSC DVD"): # DVD Remux
-                name = f"{title} ({search_year}) {season}{episode} {edition} ({resolution} DVD {hybrid} REMUX {video_codec} {hdr} {audio} {tag}) {repack}" # SOURCE
-            elif type == "ENCODE": # Encode
-                name = f"{title} ({search_year}) {season}{episode} {edition} ({resolution} {scale} {uhd} {source} {hybrid} {video_encode} {hdr} {audio} {tag}) {repack}" # SOURCE
-            elif type in ("WEBDL", "WEBRIP"): # WEB
+            elif type == "REMUX" and source == "BluRay":  # BluRay Remux
+                name = f"{title} ({search_year}) {season}{episode} {three_d} {edition} ({resolution} {uhd} {source} {hybrid} REMUX {video_codec} {hdr} {audio} {tag}) {repack}"  # SOURCE
+            elif type == "REMUX" and source in ("PAL DVD", "NTSC DVD", "DVD"):  # DVD Remux
+                name = f"{title} ({search_year}) {season}{episode} {edition} ({resolution} DVD {hybrid} REMUX {video_codec} {hdr} {audio} {tag}) {repack}"  # SOURCE
+            elif type == "ENCODE":  # Encode
+                name = f"{title} ({search_year}) {season}{episode} {edition} ({resolution} {scale} {uhd} {source} {hybrid} {video_encode} {hdr} {audio} {tag}) {repack}"  # SOURCE
+            elif type in ("WEBDL", "WEBRIP"):  # WEB
                 name = f"{title} ({search_year}) {season}{episode} {edition} ({resolution} {scale} {uhd} {service} WEB-DL {hybrid} {video_encode} {hdr} {audio} {tag}) {repack}"
-            elif type == "HDTV": # HDTV
+            elif type == "HDTV":  # HDTV
                 name = f"{title} ({search_year}) {season}{episode} {edition} ({resolution} HDTV {hybrid} {video_encode} {audio} {tag}) {repack}"
+
         if hc:
             name = re.sub(r'((\([0-9]{4}\)))', r'\1 Ensubbed', name)
         return ' '.join(name.split()).replace(": ", " - ")
-
 
     async def get_cat_id(self, category_name):
         category_id = {
@@ -219,13 +238,13 @@ class HUNO():
         return category_id
 
     async def get_type_id(self, meta):
-        basename = self.get_basename(meta)
-        type = meta['type']
+        type = meta.get('type').upper()
+        video_encode = meta.get('video_encode')
 
         if type == 'REMUX':
             return '2'
         elif type in ('WEBDL', 'WEBRIP'):
-            return '15' if 'x265' in basename else '3'
+            return '15' if 'x265' in video_encode else '3'
         elif type in ('ENCODE', 'HDTV'):
             return '15'
         elif type == 'DISC':
@@ -245,18 +264,22 @@ class HUNO():
             '576i': '7',
             '480p': '8',
             '480i': '9'
-            }.get(resolution, '10')
+        }.get(resolution, '10')
         return resolution_id
 
     async def is_plex_friendly(self, meta):
         lossy_audio_codecs = ["AAC", "DD", "DD+", "OPUS"]
 
-        if any(l in meta["audio"] for l in lossy_audio_codecs): # noqa E741
+        if any(l in meta["audio"] for l in lossy_audio_codecs):  # noqa E741
             return 1
 
         return 0
 
-    async def search_existing(self, meta):
+    async def search_existing(self, meta, disctype):
+        if meta['video_codec'] != "HEVC" and (meta['type'] == "ENCODE" or meta['type'] == "WEBRIP"):
+            console.print('[bold red]Only x265/HEVC encodes are allowed')
+            meta['skipping'] = "HUNO"
+            return
         dupes = []
         console.print("[yellow]Searching for existing torrents on site...")
 
@@ -285,3 +308,42 @@ class HUNO():
             await asyncio.sleep(5)
 
         return dupes
+
+    async def search_torrent_page(self, meta, disctype):
+        torrent_file_path = f"{meta['base_dir']}/tmp/{meta['uuid']}/[{self.tracker}]{meta['clean_name']}.torrent"
+        Name = meta['name']
+        quoted_name = f'"{Name}"'
+
+        params = {
+            'api_token': self.config['TRACKERS'][self.tracker]['api_key'].strip(),
+            'name': quoted_name
+        }
+
+        try:
+            response = requests.get(url=self.search_url, params=params)
+            response.raise_for_status()
+            response_data = response.json()
+
+            if response_data['data'] and isinstance(response_data['data'], list):
+                details_link = response_data['data'][0]['attributes'].get('details_link')
+
+                if details_link:
+                    with open(torrent_file_path, 'rb') as open_torrent:
+                        torrent_data = open_torrent.read()
+
+                    torrent = bencodepy.decode(torrent_data)
+                    torrent[b'comment'] = details_link.encode('utf-8')
+                    updated_torrent_data = bencodepy.encode(torrent)
+
+                    with open(torrent_file_path, 'wb') as updated_torrent_file:
+                        updated_torrent_file.write(updated_torrent_data)
+
+                    return details_link
+                else:
+                    return None
+            else:
+                return None
+
+        except requests.exceptions.RequestException as e:
+            print(f"An error occurred during the request: {e}")
+            return None
