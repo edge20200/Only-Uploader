@@ -3,6 +3,7 @@ import argparse
 import urllib.parse
 import os
 import datetime
+import sys
 
 from src.console import console
 
@@ -20,18 +21,23 @@ class Args():
         parser = argparse.ArgumentParser()
 
         parser.add_argument('path', nargs='*', help="Path to file/directory")
+        parser.add_argument('--queue', nargs='*', required=False, help="(--queue queue_name) Process an entire folder (files/subfolders) in a queue")
+        parser.add_argument('--unit3d', action='store_true', required=False, help="[parse a txt output file from UNIT3D-Upload-Checker]")
         parser.add_argument('-s', '--screens', nargs='*', required=False, help="Number of screenshots", default=int(self.config['DEFAULT']['screens']))
+        parser.add_argument('-mf', '--manual_frames', required=False, help="Comma-separated frame numbers to use as screenshots", type=str, default=None)
         parser.add_argument('-c', '--category', nargs='*', required=False, help="Category [MOVIE, TV, FANRES]", choices=['movie', 'tv', 'fanres'])
-        parser.add_argument('-t', '--type', nargs='*', required=False, help="Type [DISC, REMUX, ENCODE, WEBDL, WEBRIP, HDTV]", choices=['disc', 'remux', 'encode', 'webdl', 'web-dl', 'webrip', 'hdtv'])
-        parser.add_argument('--source', nargs='*', required=False, help="Source [Blu-ray, BluRay, DVD, HDDVD, WEB, HDTV, UHDTV]", choices=['Blu-ray', 'BluRay', 'DVD', 'HDDVD', 'WEB', 'HDTV', 'UHDTV'], dest="manual_source")
+        parser.add_argument('-t', '--type', nargs='*', required=False, help="Type [DISC, REMUX, ENCODE, WEBDL, WEBRIP, HDTV, DVDRIP]", choices=['disc', 'remux', 'encode', 'webdl', 'web-dl', 'webrip', 'hdtv', 'dvdrip'], dest="manual_type")
+        parser.add_argument('--source', nargs='*', required=False, help="Source [Blu-ray, BluRay, DVD, HDDVD, WEB, HDTV, UHDTV, LaserDisc, DCP]", choices=['Blu-ray', 'BluRay', 'DVD', 'HDDVD', 'WEB', 'HDTV', 'UHDTV', 'LaserDisc', 'DCP'], dest="manual_source")
         parser.add_argument('-res', '--resolution', nargs='*', required=False, help="Resolution [2160p, 1080p, 1080i, 720p, 576p, 576i, 480p, 480i, 8640p, 4320p, OTHER]", choices=['2160p', '1080p', '1080i', '720p', '576p', '576i', '480p', '480i', '8640p', '4320p', 'other'])
         parser.add_argument('-tmdb', '--tmdb', nargs='*', required=False, help="TMDb ID", type=str, dest='tmdb_manual')
         parser.add_argument('-imdb', '--imdb', nargs='*', required=False, help="IMDb ID", type=str)
         parser.add_argument('-mal', '--mal', nargs='*', required=False, help="MAL ID", type=str)
+        parser.add_argument('-tvmaze', '--tvmaze', nargs='*', required=False, help="TVMAZE ID", type=str, dest='tvmaze_manual')
+        parser.add_argument('-tvdb', '--tvdb', nargs='*', required=False, help="TVDB ID", type=str, dest='tvdb_manual')
         parser.add_argument('-g', '--tag', nargs='*', required=False, help="Group Tag", type=str)
         parser.add_argument('-serv', '--service', nargs='*', required=False, help="Streaming Service", type=str)
         parser.add_argument('-dist', '--distributor', nargs='*', required=False, help="Disc Distributor e.g.(Criterion, BFI, etc.)", type=str)
-        parser.add_argument('-edition', '--edition', '--repack', nargs='*', required=False, help="Edition/Repack String e.g.(Director's Cut, Uncut, Hybrid, REPACK, REPACK3)", type=str, dest='manual_edition', default="")
+        parser.add_argument('-edition', '--edition', '--repack', nargs='*', required=False, help="Edition/Repack String e.g.(Director's Cut, Uncut, Hybrid, REPACK, REPACK3)", type=str, dest='manual_edition', default=None)
         parser.add_argument('-season', '--season', nargs='*', required=False, help="Season (number)", type=str)
         parser.add_argument('-episode', '--episode', nargs='*', required=False, help="Episode (number)", type=str)
         parser.add_argument('-daily', '--daily', nargs=1, required=False, help="Air date of this episode (YYYY-MM-DD)", type=datetime.date.fromisoformat, dest="manual_date")
@@ -40,18 +46,27 @@ class Args():
         parser.add_argument('--no-aka', dest='no_aka', action='store_true', required=False, help="Remove AKA from title")
         parser.add_argument('--no-dub', dest='no_dub', action='store_true', required=False, help="Remove Dubbed from title")
         parser.add_argument('--no-tag', dest='no_tag', action='store_true', required=False, help="Remove Group Tag from title")
-        parser.add_argument('--no-title', dest='no_title', action='store_true', required=False, help="Remove Episode Title from title")
+        parser.add_argument('--no-edition', dest='no_edition', action='store_true', required=False, help="Remove Edition from title")
+        parser.add_argument('--dual-audio', dest='dual_audio', action='store_true', required=False, help="Add Dual-Audio to the title")
         parser.add_argument('-ns', '--no-seed', action='store_true', required=False, help="Do not add torrent to the client")
-        parser.add_argument('-year', '--year', dest='manual_year', nargs='?', required=False, help="Year", type=int, default=0)
+        parser.add_argument('-year', '--year', dest='manual_year', nargs='?', required=False, help="Override the year found", type=int, default=0)
         parser.add_argument('-ptp', '--ptp', nargs='*', required=False, help="PTP torrent id/permalink", type=str)
         parser.add_argument('-blu', '--blu', nargs='*', required=False, help="BLU torrent id/link", type=str)
         parser.add_argument('-aither', '--aither', nargs='*', required=False, help="Aither torrent id/link", type=str)
         parser.add_argument('-lst', '--lst', nargs='*', required=False, help="LST torrent id/link", type=str)
+        parser.add_argument('-oe', '--oe', nargs='*', required=False, help="OE torrent id/link", type=str)
+        parser.add_argument('-tik', '--tik', nargs='*', required=False, help="TIK torrent id/link", type=str)
         parser.add_argument('-hdb', '--hdb', nargs='*', required=False, help="HDB torrent id/link", type=str)
+        parser.add_argument('--foreign', dest='foreign', action='store_true', required=False, help="Set for TIK Foreign category")
+        parser.add_argument('--opera', dest='opera', action='store_true', required=False, help="Set for TIK Opera & Musical category")
+        parser.add_argument('--asian', dest='asian', action='store_true', required=False, help="Set for TIK Asian category")
+        parser.add_argument('-disctype', '--disctype', nargs='*', required=False, help="Type of disc for TIK (BD100, BD66, BD50, BD25, NTSC DVD9, NTSC DVD5, PAL DVD9, PAL DVD5, Custom, 3D)", type=str)
+        parser.add_argument('--untouched', dest='untouched', action='store_true', required=False, help="Set when a completely untouched disc at TIK")
         parser.add_argument('-d', '--desc', nargs='*', required=False, help="Custom Description (string)")
+        parser.add_argument('-manual_dvds', '--manual_dvds', nargs='*', required=False, help="Override the default number of DVD's (eg: use 2xDVD9+DVD5 instead)", type=str, dest='manual_dvds', default="")
         parser.add_argument('-pb', '--desclink', nargs='*', required=False, help="Custom Description (link to hastebin/pastebin)")
         parser.add_argument('-df', '--descfile', nargs='*', required=False, help="Custom Description (path to file)")
-        parser.add_argument('-ih', '--imghost', nargs='*', required=False, help="Image Host", choices=['imgbb', 'ptpimg', 'imgbox', 'pixhost', 'lensdump', 'oeimg', 'ptscreens'])
+        parser.add_argument('-ih', '--imghost', nargs='*', required=False, help="Image Host", choices=['imgbb', 'ptpimg', 'imgbox', 'pixhost', 'lensdump', 'ptscreens', 'oeimg'])
         parser.add_argument('-siu', '--skip-imagehost-upload', dest='skip_imghost_upload', action='store_true', required=False, help="Skip Uploading to an image host")
         parser.add_argument('-th', '--torrenthash', nargs='*', required=False, help="Torrent Hash to re-use from your client's session directory")
         parser.add_argument('-nfo', '--nfo', action='store_true', required=False, help="Use .nfo in directory for description")
@@ -67,11 +82,11 @@ class Args():
         parser.add_argument('-debug', '--debug', action='store_true', required=False, help="Debug Mode, will run through all the motions providing extra info, but will not upload to trackers.")
         parser.add_argument('-ffdebug', '--ffdebug', action='store_true', required=False, help="Will show info from ffmpeg while taking screenshots.")
         parser.add_argument('-m', '--manual', action='store_true', required=False, help="Manual Mode. Returns link to ddl screens/base.torrent")
+        parser.add_argument('-mps', '--max-piece-size', nargs='*', required=False, help="Set max piece size allowed in MiB for default torrent creation (default 256 MiB)", choices=['2', '4', '8', '16', '32', '64', '128', '256'])
         parser.add_argument('-nh', '--nohash', action='store_true', required=False, help="Don't hash .torrent")
         parser.add_argument('-rh', '--rehash', action='store_true', required=False, help="DO hash .torrent")
-        parser.add_argument('-ps', '--piece-size-max', dest='piece_size_max', nargs='*', required=False, help="Maximum piece size in MiB", choices=[1, 2, 4, 8, 16], type=int)
-        parser.add_argument('-dr', '--draft', action='store_true', required=False, help="Send to drafts (BHD)")
-        parser.add_argument('-mps', '--max-piece-size', nargs='*', required=False, help="Set max piece size allowed in MiB for default torrent creation (default 64 MiB)", choices=['2', '4', '8', '16', '32', '64', '128'])
+        parser.add_argument('-dr', '--draft', action='store_true', required=False, help="Send to drafts (BHD, LST)")
+        parser.add_argument('-mq', '--modq', action='store_true', required=False, help="Send to modQ")
         parser.add_argument('-client', '--client', nargs='*', required=False, help="Use this torrent client instead of default")
         parser.add_argument('-qbt', '--qbit-tag', dest='qbit_tag', nargs='*', required=False, help="Add to qbit with this tag")
         parser.add_argument('-qbc', '--qbit-cat', dest='qbit_cat', nargs='*', required=False, help="Add to qbit with this category")
@@ -79,12 +94,25 @@ class Args():
         parser.add_argument('-tk', '--trackers', nargs='*', required=False, help="Upload to these trackers, space seperated (--trackers blu bhd)")
         parser.add_argument('-rt', '--randomized', nargs='*', required=False, help="Number of extra, torrents with random infohash", default=0)
         parser.add_argument('-ua', '--unattended', action='store_true', required=False, help=argparse.SUPPRESS)
+        parser.add_argument('-uac', '--unattended-confirm', action='store_true', required=False, help=argparse.SUPPRESS)
         parser.add_argument('-vs', '--vapoursynth', action='store_true', required=False, help="Use vapoursynth for screens (requires vs install)")
         parser.add_argument('-cleanup', '--cleanup', action='store_true', required=False, help="Clean up tmp directory")
         parser.add_argument('-fl', '--freeleech', nargs='*', required=False, help="Freeleech Percentage", default=0, dest="freeleech")
+        parser.add_argument('--infohash', nargs='*', required=False, help="V1 Info Hash")
         args, before_args = parser.parse_known_args(input)
         args = vars(args)
         # console.print(args)
+        if meta.get('manual_frames') is not None:
+            try:
+                # Join the list into a single string, split by commas, and convert to integers
+                meta['manual_frames'] = [int(time.strip()) for time in meta['manual_frames'].split(',')]
+                # console.print(f"Processed manual_frames: {meta['manual_frames']}")
+            except ValueError:
+                console.print("[red]Invalid format for manual_frames. Please provide a comma-separated list of integers.")
+                console.print(f"Processed manual_frames: {meta['manual_frames']}")
+                sys.exit(1)
+        else:
+            meta['manual_frames'] = None  # Explicitly set it to None if not provided
         if len(before_args) >= 1 and not os.path.exists(' '.join(args['path'])):
             for each in before_args:
                 args['path'].append(each)
@@ -102,8 +130,8 @@ class Args():
             if value not in (None, []):
                 if isinstance(value, list):
                     value2 = self.list_to_string(value)
-                    if key == 'type':
-                        meta[key] = value2.upper().replace('-', '')
+                    if key == 'manual_type':
+                        meta['manual_type'] = value2.upper().replace('-', '')
                     elif key == 'tag':
                         meta[key] = f"-{value2}"
                     elif key == 'screens':
@@ -165,6 +193,32 @@ class Args():
                                 console.print('[red]Continuing without --lst')
                         else:
                             meta['lst'] = value2
+                    elif key == 'oe':
+                        if value2.startswith('http'):
+                            parsed = urllib.parse.urlparse(value2)
+                            try:
+                                oepath = parsed.path
+                                if oepath.endswith('/'):
+                                    oepath = oepath[:-1]
+                                meta['oe'] = oepath.split('/')[-1]
+                            except Exception:
+                                console.print('[red]Unable to parse id from url')
+                                console.print('[red]Continuing without --oe')
+                        else:
+                            meta['oe'] = value2
+                    elif key == 'tik':
+                        if value2.startswith('http'):
+                            parsed = urllib.parse.urlparse(value2)
+                            try:
+                                tikpath = parsed.path
+                                if tikpath.endswith('/'):
+                                    tikpath = tikpath[:-1]
+                                meta['tik'] = tikpath.split('/')[-1]
+                            except Exception:
+                                console.print('[red]Unable to parse id from url')
+                                console.print('[red]Continuing without --tik')
+                        else:
+                            meta['tik'] = value2
                     elif key == 'hdb':
                         if value2.startswith('http'):
                             parsed = urllib.parse.urlparse(value2)
@@ -181,6 +235,8 @@ class Args():
                 else:
                     meta[key] = value
             elif key in ("manual_edition"):
+                meta[key] = value
+            elif key in ("manual_dvds"):
                 meta[key] = value
             elif key in ("freeleech"):
                 meta[key] = 100

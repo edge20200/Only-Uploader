@@ -12,13 +12,13 @@ class Search():
         pass
 
     async def searchFile(self, filename):
-        os_info = platform.platform() # noqa F841
+        os_info = platform.platform()  # noqa F841
         filename = filename.lower()
         files_total = []
         if filename == "":
             console.print("nothing entered")
             return
-        file_found = False # noqa F841
+        file_found = False  # noqa F841
         words = filename.split()
 
         async def search_file(search_dir):
@@ -30,7 +30,7 @@ class Search():
                         l_name = name.lower()
                         os_info = platform.platform()
                         if await self.file_search(l_name, words):
-                            file_found = True # noqa F841
+                            file_found = True  # noqa F841
                             if ('Windows' in os_info):
                                 files_total_search.append(root + '\\' + name)
                             else:
@@ -46,13 +46,13 @@ class Search():
         return files_total
 
     async def searchFolder(self, foldername):
-        os_info = platform.platform() # noqa F841
+        os_info = platform.platform()  # noqa F841
         foldername = foldername.lower()
         folders_total = []
         if foldername == "":
             console.print("nothing entered")
             return
-        folders_found = False # noqa F841
+        folders_found = False  # noqa F841
         words = foldername.split()
 
         async def search_dir(search_dir):
@@ -66,7 +66,7 @@ class Search():
                     os_info = platform.platform()
 
                     if await self.file_search(l_name, words):
-                        folder_found = True # noqa F841
+                        folder_found = True  # noqa F841
                         if ('Windows' in os_info):
                             folders_total_search.append(root + '\\' + name)
                         else:

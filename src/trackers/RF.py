@@ -3,7 +3,11 @@
 import asyncio
 import requests
 import platform
+import re
 from str2bool import str2bool
+import bencodepy
+import os
+import glob
 
 from src.trackers.COMMON import COMMON
 from src.console import console
@@ -24,20 +28,20 @@ class RF():
         self.source_flag = 'ReelFliX'
         self.upload_url = 'https://reelflix.xyz/api/torrents/upload'
         self.search_url = 'https://reelflix.xyz/api/torrents/filter'
-        self.forum_link = "\n[center][url=https://github.com/edge20200/Only-Uploader]Powered by Only-Uploader[/url][/center]"
+        self.signature = "\n[center][url=https://github.com/edge20200/Only-Uploader]Powered by Only-Uploader[/url][/center]"
         self.banned_groups = [""]
         pass
 
-    async def upload(self, meta):
+    async def upload(self, meta, disctype):
         common = COMMON(config=self.config)
         await common.edit_torrent(meta, self.tracker, self.source_flag)
-        await common.unit3d_edit_desc(meta, self.tracker, self.forum_link)
+        await common.unit3d_edit_desc(meta, self.tracker, self.signature, comparison=True)
         region_id = await common.unit3d_region_ids(meta.get('region'))
         distributor_id = await common.unit3d_distributor_ids(meta.get('distributor'))
         cat_id = await self.get_cat_id(meta['category'])
         type_id = await self.get_type_id(meta['type'])
         resolution_id = await self.get_res_id(meta['resolution'])
-        stt_name = await self.edit_name(meta)
+        rf_name = await self.edit_name(meta)
         if meta['anon'] == 0 and bool(str2bool(str(self.config['TRACKERS'][self.tracker].get('anon', "False")))) is False:
             anon = 0
         else:
@@ -48,11 +52,20 @@ class RF():
         else:
             mi_dump = open(f"{meta['base_dir']}/tmp/{meta['uuid']}/MEDIAINFO.txt", 'r', encoding='utf-8').read()
             bd_dump = None
-        desc = open(f"{meta['base_dir']}/tmp/{meta['uuid']}/[{self.tracker}]DESCRIPTION.txt", 'r').read()
+        desc = open(f"{meta['base_dir']}/tmp/{meta['uuid']}/[{self.tracker}]DESCRIPTION.txt", 'r', encoding='utf-8').read()
         open_torrent = open(f"{meta['base_dir']}/tmp/{meta['uuid']}/[{self.tracker}]{meta['clean_name']}.torrent", 'rb')
         files = {'torrent': open_torrent}
+        base_dir = meta['base_dir']
+        uuid = meta['uuid']
+        specified_dir_path = os.path.join(base_dir, "tmp", uuid, "*.nfo")
+        nfo_files = glob.glob(specified_dir_path)
+        nfo_file = None
+        if nfo_files:
+            nfo_file = open(nfo_files[0], 'rb')
+        if nfo_file:
+            files['nfo'] = ("nfo_file.nfo", nfo_file, "text/plain")
         data = {
-            'name': stt_name,
+            'name': rf_name,
             'description': desc,
             'mediainfo': mi_dump,
             'bdinfo': bd_dump,
@@ -85,13 +98,11 @@ class RF():
         if distributor_id != 0:
             data['distributor_id'] = distributor_id
         headers = {
-            'User-Agent': f'Upload Assistant/2.1 ({platform.system()} {platform.release()})'
+            'User-Agent': f'Upload Assistant/2.2 ({platform.system()} {platform.release()})'
         }
         params = {
             'api_token': self.config['TRACKERS'][self.tracker]['api_key'].strip()
         }
-        if meta.get('category') == "TV":
-            console.print('[bold red]This site only ALLOWS Movies.')
         if meta['debug'] is False:
             response = requests.post(url=self.upload_url, files=files, data=data, headers=headers, params=params)
             try:
@@ -105,8 +116,16 @@ class RF():
         open_torrent.close()
 
     async def edit_name(self, meta):
-        stt_name = meta['name']
-        return stt_name
+        rf_name = meta['name']
+        tag_lower = meta['tag'].lower()
+        invalid_tags = ["nogrp", "nogroup", "unknown", "-unk-"]
+
+        if meta['tag'] == "" or any(invalid_tag in tag_lower for invalid_tag in invalid_tags):
+            for invalid_tag in invalid_tags:
+                rf_name = re.sub(f"-{invalid_tag}", "", rf_name, flags=re.IGNORECASE)
+            rf_name = f"{rf_name}-NoGroup"
+
+        return rf_name
 
     async def get_cat_id(self, category_name):
         category_id = {
@@ -142,7 +161,16 @@ class RF():
         }.get(resolution, '10')
         return resolution_id
 
-    async def search_existing(self, meta):
+    async def search_existing(self, meta, disctype):
+        disallowed_keywords = {'XXX', 'Erotic'}
+        if any(keyword in meta['keywords'] for keyword in disallowed_keywords):
+            console.print('[bold red]Erotic not allowed.')
+            meta['skipping'] = "RF"
+            return
+        if meta.get('category') == "TV":
+            console.print('[bold red]This site only ALLOWS Movies.')
+            meta['skipping'] = "RF"
+            return
         dupes = []
         console.print("[yellow]Searching for existing torrents on site...")
         params = {
@@ -153,9 +181,6 @@ class RF():
             'resolutions[]': await self.get_res_id(meta['resolution']),
             'name': ""
         }
-        if meta['category'] == 'TV':
-            console.print('[bold red]Unable to search site for TV as this site only ALLOWS Movies')
-        #     params['name'] = f"{meta.get('season', '')}{meta.get('episode', '')}"
         if meta.get('edition', "") != "":
             params['name'] = params['name'] + meta['edition']
         try:
@@ -171,3 +196,42 @@ class RF():
             await asyncio.sleep(5)
 
         return dupes
+
+    async def search_torrent_page(self, meta, disctype):
+        torrent_file_path = f"{meta['base_dir']}/tmp/{meta['uuid']}/[{self.tracker}]{meta['clean_name']}.torrent"
+        Name = meta['name']
+        quoted_name = f'"{Name}"'
+
+        params = {
+            'api_token': self.config['TRACKERS'][self.tracker]['api_key'].strip(),
+            'name': quoted_name
+        }
+
+        try:
+            response = requests.get(url=self.search_url, params=params)
+            response.raise_for_status()
+            response_data = response.json()
+
+            if response_data['data'] and isinstance(response_data['data'], list):
+                details_link = response_data['data'][0]['attributes'].get('details_link')
+
+                if details_link:
+                    with open(torrent_file_path, 'rb') as open_torrent:
+                        torrent_data = open_torrent.read()
+
+                    torrent = bencodepy.decode(torrent_data)
+                    torrent[b'comment'] = details_link.encode('utf-8')
+                    updated_torrent_data = bencodepy.encode(torrent)
+
+                    with open(torrent_file_path, 'wb') as updated_torrent_file:
+                        updated_torrent_file.write(updated_torrent_data)
+
+                    return details_link
+                else:
+                    return None
+            else:
+                return None
+
+        except requests.exceptions.RequestException as e:
+            print(f"An error occurred during the request: {e}")
+            return None

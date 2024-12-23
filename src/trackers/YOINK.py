@@ -2,8 +2,8 @@
 # import discord
 import asyncio
 import requests
-import platform
 from str2bool import str2bool
+import platform
 import bencodepy
 import os
 import glob
@@ -12,7 +12,7 @@ from src.trackers.COMMON import COMMON
 from src.console import console
 
 
-class LT():
+class YOINK():
     """
     Edit for Tracker:
         Edit BASE.torrent with announce and source
@@ -23,31 +23,19 @@ class LT():
 
     def __init__(self, config):
         self.config = config
-        self.tracker = 'LT'
-        self.source_flag = 'Lat-Team "Poder Latino"'
-        self.upload_url = 'https://lat-team.com/api/torrents/upload'
-        self.search_url = 'https://lat-team.com/api/torrents/filter'
-        self.signature = ''
-        self.banned_groups = [""]
+        self.tracker = 'YOINK'
+        self.source_flag = 'YOINK'
+        self.upload_url = 'https://yoinked.org/api/torrents/upload'
+        self.search_url = 'https://yoinked.org/api/torrents/filter'
+        self.signature = "\n[center][url=https://github.com/edge20200/Only-Uploader]Powered by Only-Uploader[/url][/center]"
+        self.banned_groups = ["YTS,YiFY,LAMA,MeGUSTA,NAHOM,GalaxyRG,RARBG"]
         pass
 
-    async def get_cat_id(self, category_name, meta):
+    async def get_cat_id(self, category_name):
         category_id = {
             'MOVIE': '1',
             'TV': '2',
-            'ANIME': '5',
-            'TELENOVELAS': '8',
-            'Doramas & Turcas': '20',
         }.get(category_name, '0')
-        # if is anime
-        if meta['anime'] is True and category_id == '2':
-            category_id = '5'
-        # elif is telenovela
-        elif category_id == '2' and ("telenovela" in meta['keywords'] or "telenovela" in meta['overview']):
-            category_id = '8'
-        # if is  TURCAS o Doramas
-        # elif meta["original_language"] in ['ja', 'ko', 'tr'] and category_id == '2' and 'Drama' in meta['genres'] :
-            # category_id = '20'
         return category_id
 
     async def get_type_id(self, type):
@@ -77,47 +65,20 @@ class LT():
         }.get(resolution, '10')
         return resolution_id
 
-    async def edit_name(self, meta):
-        lt_name = meta['name'].replace('Dual-Audio', '').replace('Dubbed', '').replace('  ', ' ').strip()
-        if meta['type'] != 'DISC':  # DISC don't have mediainfo
-            # Check if is HYBRID (Copied from BLU.py)
-            if 'hybrid' in meta.get('uuid').lower():
-                if "repack" in meta.get('uuid').lower():
-                    lt_name = lt_name.replace('REPACK', 'Hybrid REPACK')
-                else:
-                    lt_name = lt_name.replace(meta['resolution'], f"Hybrid {meta['resolution']}")
-            # Check if audio Spanish exists
-            # Get all the audios 'es-419' or 'es'
-            audios = [
-                audio for audio in meta['mediainfo']['media']['track'][2:]
-                if audio.get('@type') == 'Audio'
-                and audio.get('Language') in {'es-419', 'es'}
-                and "commentary" not in audio.get('Title').lower()
-                ]
-            if len(audios) > 0:  # If there is at least 1 audio spanish
-                lt_name = lt_name
-            # if not audio Spanish exists, add "[SUBS]"
-            elif not meta.get('tag'):
-                lt_name = lt_name + " [SUBS]"
-            else:
-                lt_name = lt_name.replace(meta['tag'], f" [SUBS]{meta['tag']}")
-
-        return lt_name
-
     async def upload(self, meta, disctype):
         common = COMMON(config=self.config)
         await common.edit_torrent(meta, self.tracker, self.source_flag)
-        cat_id = await self.get_cat_id(meta['category'], meta)
+        cat_id = await self.get_cat_id(meta['category'])
         type_id = await self.get_type_id(meta['type'])
         resolution_id = await self.get_res_id(meta['resolution'])
-        await common.unit3d_edit_desc(meta, self.tracker, self.signature)
-        # region_id = await common.unit3d_region_ids(meta.get('region'))
+        await common.unit3d_edit_desc(meta, self.tracker, self.signature, comparison=True)
+        region_id = await common.unit3d_region_ids(meta.get('region'))
         distributor_id = await common.unit3d_distributor_ids(meta.get('distributor'))
-        lt_name = await self.edit_name(meta)
         if meta['anon'] == 0 and bool(str2bool(str(self.config['TRACKERS'][self.tracker].get('anon', "False")))) is False:
             anon = 0
         else:
             anon = 1
+
         if meta['bdinfo'] is not None:
             mi_dump = None
             bd_dump = open(f"{meta['base_dir']}/tmp/{meta['uuid']}/BD_SUMMARY_00.txt", 'r', encoding='utf-8').read()
@@ -137,7 +98,7 @@ class LT():
         if nfo_file:
             files['nfo'] = ("nfo_file.nfo", nfo_file, "text/plain")
         data = {
-            'name': lt_name,
+            'name': meta['name'],
             'description': desc,
             'mediainfo': mi_dump,
             'bdinfo': bd_dump,
@@ -165,11 +126,13 @@ class LT():
             if meta['tag'] != "" and (meta['tag'][1:] in self.config['TRACKERS'][self.tracker].get('internal_groups', [])):
                 data['internal'] = 1
 
+        if region_id != 0:
+            data['region_id'] = region_id
         if distributor_id != 0:
             data['distributor_id'] = distributor_id
         if meta.get('category') == "TV":
-            data['season_number'] = int(meta.get('season_int', '0'))
-            data['episode_number'] = int(meta.get('episode_int', '0'))
+            data['season_number'] = meta.get('season_int', '0')
+            data['episode_number'] = meta.get('episode_int', '0')
         headers = {
             'User-Agent': f'Upload Assistant/2.2 ({platform.system()} {platform.release()})'
         }
@@ -195,13 +158,11 @@ class LT():
         params = {
             'api_token': self.config['TRACKERS'][self.tracker]['api_key'].strip(),
             'tmdbId': meta['tmdb'],
-            'categories[]': await self.get_cat_id(meta['category'], meta),
+            'categories[]': await self.get_cat_id(meta['category']),
             'types[]': await self.get_type_id(meta['type']),
             'resolutions[]': await self.get_res_id(meta['resolution']),
             'name': ""
         }
-        if meta['category'] == 'TV':
-            params['name'] = params['name'] + f" {meta.get('season', '')}{meta.get('episode', '')}"
         if meta.get('edition', "") != "":
             params['name'] = params['name'] + f" {meta['edition']}"
         try:

@@ -4,6 +4,9 @@ import asyncio
 import requests
 from str2bool import str2bool
 import platform
+import bencodepy
+import os
+import glob
 
 from src.trackers.COMMON import COMMON
 from src.console import console
@@ -24,11 +27,11 @@ class CBR():
         self.search_url = 'https://capybarabr.com/api/torrents/filter'
         self.torrent_url = 'https://capybarabr.com/api/torrents/'
         self.upload_url = 'https://capybarabr.com/api/torrents/upload'
-        self.signature = f"\n[center]Powered by Only-Uploader[/center]"
+        self.signature = "\n[center][url=https://github.com/edge20200/Only-Uploader]Powered by Only-Uploader[/url][/center]"
         self.banned_groups = [""]
         pass
 
-    async def upload(self, meta):
+    async def upload(self, meta, disctype):
         common = COMMON(config=self.config)
         await common.edit_torrent(meta, self.tracker, self.source_flag)
         await common.unit3d_edit_desc(meta, self.tracker, self.signature)
@@ -49,9 +52,18 @@ class CBR():
         else:
             mi_dump = open(f"{meta['base_dir']}/tmp/{meta['uuid']}/MEDIAINFO.txt", 'r', encoding='utf-8').read()
             bd_dump = None
-        desc = open(f"{meta['base_dir']}/tmp/{meta['uuid']}/[CBR]DESCRIPTION.txt", 'r').read()
+        desc = open(f"{meta['base_dir']}/tmp/{meta['uuid']}/[CBR]DESCRIPTION.txt", 'r', encoding='utf-8').read()
         open_torrent = open(f"{meta['base_dir']}/tmp/{meta['uuid']}/[CBR]{meta['clean_name']}.torrent", 'rb')
         files = {'torrent': ("placeholder.torrent", open_torrent, "application/x-bittorrent")}
+        base_dir = meta['base_dir']
+        uuid = meta['uuid']
+        specified_dir_path = os.path.join(base_dir, "tmp", uuid, "*.nfo")
+        nfo_files = glob.glob(specified_dir_path)
+        nfo_file = None
+        if nfo_files:
+            nfo_file = open(nfo_files[0], 'rb')
+        if nfo_file:
+            files['nfo'] = ("nfo_file.nfo", nfo_file, "text/plain")
         data = {
             'name': name,
             'description': desc,
@@ -89,7 +101,7 @@ class CBR():
             data['season_number'] = meta.get('season_int', '0')
             data['episode_number'] = meta.get('episode_int', '0')
         headers = {
-            'User-Agent': f'Upload Assistant/2.1 ({platform.system()} {platform.release()})'
+            'User-Agent': f'Upload Assistant/2.2 ({platform.system()} {platform.release()})'
         }
         params = {
             'api_token': self.config['TRACKERS'][self.tracker]['api_key'].strip()
@@ -143,7 +155,7 @@ class CBR():
         }.get(resolution, '10')
         return resolution_id
 
-    async def search_existing(self, meta):
+    async def search_existing(self, meta, disctype):
         dupes = []
         console.print("[yellow]Buscando por duplicatas no tracker...")
         params = {
@@ -177,3 +189,42 @@ class CBR():
         name = meta['uuid'].replace('.mkv', '').replace('.mp4', '').replace(".", " ").replace("DDP2 0", "DDP2.0").replace("DDP5 1", "DDP5.1").replace("H 264", "H.264").replace("H 265", "H.265").replace("DD+7 1", "DDP7.1").replace("AAC2 0", "AAC2.0").replace('DD5 1', 'DD5.1').replace('DD2 0', 'DD2.0').replace('TrueHD 7 1', 'TrueHD 7.1').replace('DTS-HD MA 7 1', 'DTS-HD MA 7.1').replace('DTS-HD MA 5 1', 'DTS-HD MA 5.1').replace("TrueHD 5 1", "TrueHD 5.1").replace("DTS-X 7 1", "DTS-X 7.1").replace("DTS-X 5 1", "DTS-X 5.1").replace("FLAC 2 0", "FLAC 2.0").replace("FLAC 5 1", "FLAC 5.1").replace("DD1 0", "DD1.0").replace("DTS ES 5 1", "DTS ES 5.1").replace("DTS5 1", "DTS 5.1").replace("AAC1 0", "AAC1.0").replace("DD+5 1", "DDP5.1").replace("DD+2 0", "DDP2.0").replace("DD+1 0", "DDP1.0")
 
         return name
+
+    async def search_torrent_page(self, meta, disctype):
+        torrent_file_path = f"{meta['base_dir']}/tmp/{meta['uuid']}/[{self.tracker}]{meta['clean_name']}.torrent"
+        Name = meta['name']
+        quoted_name = f'"{Name}"'
+
+        params = {
+            'api_token': self.config['TRACKERS'][self.tracker]['api_key'].strip(),
+            'name': quoted_name
+        }
+
+        try:
+            response = requests.get(url=self.search_url, params=params)
+            response.raise_for_status()
+            response_data = response.json()
+
+            if response_data['data'] and isinstance(response_data['data'], list):
+                details_link = response_data['data'][0]['attributes'].get('details_link')
+
+                if details_link:
+                    with open(torrent_file_path, 'rb') as open_torrent:
+                        torrent_data = open_torrent.read()
+
+                    torrent = bencodepy.decode(torrent_data)
+                    torrent[b'comment'] = details_link.encode('utf-8')
+                    updated_torrent_data = bencodepy.encode(torrent)
+
+                    with open(torrent_file_path, 'wb') as updated_torrent_file:
+                        updated_torrent_file.write(updated_torrent_data)
+
+                    return details_link
+                else:
+                    return None
+            else:
+                return None
+
+        except requests.exceptions.RequestException as e:
+            print(f"An error occurred during the request: {e}")
+            return None

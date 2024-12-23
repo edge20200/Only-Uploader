@@ -37,7 +37,7 @@ class BBCODE:
         pass
 
     def clean_ptp_description(self, desc, is_disc):
-        # console.print(f"[yellow]Cleaning PTP description...")
+        # console.print("[yellow]Cleaning PTP description...")
 
         # Convert Bullet Points to -
         desc = desc.replace("&bull;", "-")
@@ -47,7 +47,11 @@ class BBCODE:
         desc = desc.replace('\r\n', '\n')
 
         # Remove url tags with PTP/HDB links
-        url_tags = re.findall(r"(\[url[\=\]]https?:\/\/passthepopcorn\.m[^\]]+)([^\[]+)(\[\/url\])?", desc, flags=re.IGNORECASE)
+        url_tags = re.findall(
+            r"(?:\[url(?:=|\])[^\]]*https?:\/\/passthepopcorn\.m[^\]]*\]|\bhttps?:\/\/passthepopcorn\.m[^\s]+)",
+            desc,
+            flags=re.IGNORECASE,
+        )
         url_tags += re.findall(r"(\[url[\=\]]https?:\/\/hdbits\.o[^\]]+)([^\[]+)(\[\/url\])?", desc, flags=re.IGNORECASE)
         if url_tags:
             for url_tag in url_tags:
@@ -61,18 +65,62 @@ class BBCODE:
         desc = desc.replace('http://passthepopcorn.me', 'PTP').replace('https://passthepopcorn.me', 'PTP')
         desc = desc.replace('http://hdbits.org', 'HDB').replace('https://hdbits.org', 'HDB')
 
-        # Remove Mediainfo Tags / Attempt to regex out mediainfo
-        mediainfo_tags = re.findall(r"\[mediainfo\][\s\S]*?\[\/mediainfo\]", desc)
-        if mediainfo_tags:
+        if is_disc == "DVD":
             desc = re.sub(r"\[mediainfo\][\s\S]*?\[\/mediainfo\]", "", desc)
-        elif is_disc != "BDMV":
+
+        elif is_disc == "BDMV":
+            desc = re.sub(r"\[mediainfo\][\s\S]*?\[\/mediainfo\]", "", desc)
+            desc = re.sub(r"Disc Title:[\s\S]*?(\n\n|$)", "", desc, flags=re.IGNORECASE)
+            desc = re.sub(r"Disc Size:[\s\S]*?(\n\n|$)", "", desc, flags=re.IGNORECASE)
+            desc = re.sub(r"Protection:[\s\S]*?(\n\n|$)", "", desc, flags=re.IGNORECASE)
+            desc = re.sub(r"BD-Java:[\s\S]*?(\n\n|$)", "", desc, flags=re.IGNORECASE)
+            desc = re.sub(r"BDInfo:[\s\S]*?(\n\n|$)", "", desc, flags=re.IGNORECASE)
+            desc = re.sub(r"PLAYLIST REPORT:[\s\S]*?(?=\n\n|$)", "", desc, flags=re.IGNORECASE)
+            desc = re.sub(r"Name:[\s\S]*?(\n\n|$)", "", desc, flags=re.IGNORECASE)
+            desc = re.sub(r"Length:[\s\S]*?(\n\n|$)", "", desc, flags=re.IGNORECASE)
+            desc = re.sub(r"Size:[\s\S]*?(\n\n|$)", "", desc, flags=re.IGNORECASE)
+            desc = re.sub(r"Total Bitrate:[\s\S]*?(\n\n|$)", "", desc, flags=re.IGNORECASE)
+            desc = re.sub(r"VIDEO:[\s\S]*?(?=\n\n|$)", "", desc, flags=re.IGNORECASE)
+            desc = re.sub(r"AUDIO:[\s\S]*?(?=\n\n|$)", "", desc, flags=re.IGNORECASE)
+            desc = re.sub(r"SUBTITLES:[\s\S]*?(?=\n\n|$)", "", desc, flags=re.IGNORECASE)
+            desc = re.sub(r"Codec\s+Bitrate\s+Description[\s\S]*?(?=\n\n|$)", "", desc, flags=re.IGNORECASE)
+            desc = re.sub(r"Codec\s+Language\s+Bitrate\s+Description[\s\S]*?(?=\n\n|$)", "", desc, flags=re.IGNORECASE)
+
+        else:
+            desc = re.sub(r"\[mediainfo\][\s\S]*?\[\/mediainfo\]", "", desc)
             desc = re.sub(r"(^general\nunique)(.*?)^$", "", desc, flags=re.MULTILINE | re.IGNORECASE | re.DOTALL)
             desc = re.sub(r"(^general\ncomplete)(.*?)^$", "", desc, flags=re.MULTILINE | re.IGNORECASE | re.DOTALL)
             desc = re.sub(r"(^(Format[\s]{2,}:))(.*?)^$", "", desc, flags=re.MULTILINE | re.IGNORECASE | re.DOTALL)
             desc = re.sub(r"(^(video|audio|text)( #\d+)?\nid)(.*?)^$", "", desc, flags=re.MULTILINE | re.IGNORECASE | re.DOTALL)
             desc = re.sub(r"(^(menu)( #\d+)?\n)(.*?)^$", "", f"{desc}\n\n", flags=re.MULTILINE | re.IGNORECASE | re.DOTALL)
-        elif any(x in is_disc for x in ["BDMV", "DVD"]):
-            return "", []
+
+            desc = re.sub(
+                r"\[b\](.*?)(Matroska|DTS|AVC|x264|Progressive|23\.976 fps|16:9|[0-9]+x[0-9]+|[0-9]+ MiB|[0-9]+ Kbps|[0-9]+ bits|cabac=.*?/ aq=.*?|\d+\.\d+ Mbps)\[/b\]",
+                "",
+                desc,
+                flags=re.IGNORECASE | re.DOTALL,
+            )
+            desc = re.sub(
+                r"(Matroska|DTS|AVC|x264|Progressive|23\.976 fps|16:9|[0-9]+x[0-9]+|[0-9]+ MiB|[0-9]+ Kbps|[0-9]+ bits|cabac=.*?/ aq=.*?|\d+\.\d+ Mbps|[0-9]+\s+channels|[0-9]+\.[0-9]+\s+KHz|[0-9]+ KHz|[0-9]+\s+bits)",
+                "",
+                desc,
+                flags=re.IGNORECASE | re.DOTALL,
+            )
+            desc = re.sub(
+                r"\[u\](Format|Bitrate|Channels|Sampling Rate|Resolution):\[/u\]\s*\d*.*?",
+                "",
+                desc,
+                flags=re.IGNORECASE,
+            )
+            desc = re.sub(
+                r"^\s*\d+\s*(channels|KHz|bits)\s*$",
+                "",
+                desc,
+                flags=re.MULTILINE | re.IGNORECASE,
+            )
+
+            desc = re.sub(r"^\s+$", "", desc, flags=re.MULTILINE)
+            desc = re.sub(r"\n{2,}", "\n", desc)
 
         # Convert Quote tags:
         desc = re.sub(r"\[quote.*?\]", "[code]", desc)
@@ -123,7 +171,7 @@ class BBCODE:
         desc = re.sub(r"\[img=[\s\S]*?\]", "", desc, flags=re.IGNORECASE)
 
         # Extract loose images and add to imagelist as dictionaries
-        loose_images = re.findall(r"(https?:\/\/.*\.(?:png|jpg))", nocomp, flags=re.IGNORECASE)
+        loose_images = re.findall(r"(https?:\/\/[^\s\[\]]+\.(?:png|jpg))", nocomp, flags=re.IGNORECASE)
         if loose_images:
             for img_url in loose_images:
                 image_dict = {
@@ -198,13 +246,24 @@ class BBCODE:
                 # Remove the [img] tag and its contents from the description
                 desc = re.sub(rf"\[img[^\]]*\]{re.escape(img_url)}\[/img\]", '', desc, flags=re.IGNORECASE)
 
+        # Now, remove matching URLs from [URL] tags
+        for img in imagelist:
+            img_url = re.escape(img['img_url'])
+            desc = re.sub(rf"\[URL={img_url}\]\[/URL\]", '', desc, flags=re.IGNORECASE)
+            desc = re.sub(rf"\[URL={img_url}\]\[img[^\]]*\]{img_url}\[/img\]\[/URL\]", '', desc, flags=re.IGNORECASE)
+
         # Filter out bot images from imagelist
         bot_image_urls = [
             "https://blutopia.xyz/favicon.ico",  # Example bot image URL
             "https://i.ibb.co/2NVWb0c/uploadrr.webp",
+            "https://blutopia/favicon.ico",
+            "https://ptpimg.me/606tk4.png",
             # Add any other known bot image URLs here
         ]
-        imagelist = [img for img in imagelist if img['img_url'] not in bot_image_urls]
+        imagelist = [
+            img for img in imagelist
+            if img['img_url'] not in bot_image_urls and not re.search(r'thumbs', img['img_url'], re.IGNORECASE)
+        ]
 
         # Restore spoiler tags
         if spoiler_placeholders:
@@ -236,10 +295,10 @@ class BBCODE:
         desc = re.sub(bot_signature_regex, "", desc, flags=re.IGNORECASE | re.VERBOSE)
         desc = re.sub(r"\[center\].*Created by L4G's Upload Assistant.*\[\/center\]", "", desc, flags=re.IGNORECASE)
 
-        # Ensure no dangling tags and remove extra blank lines
-        desc = re.sub(r'\n\s*\n', '\n', desc)  # Remove multiple consecutive blank lines
-        desc = re.sub(r'\n\n+', '\n\n', desc)  # Ensure no excessive blank lines
-        desc = desc.strip()  # Final cleanup of trailing newlines and spaces
+        # Remove leftover [img] or [URL] tags in the description
+        desc = re.sub(r"\[img\][\s\S]*?\[\/img\]", "", desc, flags=re.IGNORECASE)
+        desc = re.sub(r"\[img=[\s\S]*?\]", "", desc, flags=re.IGNORECASE)
+        desc = re.sub(r"\[URL=[\s\S]*?\]\[\/URL\]", "", desc, flags=re.IGNORECASE)
 
         # Strip trailing whitespace and newlines:
         desc = desc.rstrip()

@@ -5,6 +5,7 @@ import requests
 import base64
 import re
 import datetime
+import httpx
 
 from src.trackers.COMMON import COMMON
 from src.console import console
@@ -28,7 +29,7 @@ class RTF():
         self.banned_groups = []
         pass
 
-    async def upload(self, meta):
+    async def upload(self, meta, disctype):
         common = COMMON(config=self.config)
         await common.edit_torrent(meta, self.tracker, self.source_flag)
         await common.unit3d_edit_desc(meta, self.tracker, self.forum_link)
@@ -73,10 +74,6 @@ class RTF():
             'Authorization': self.config['TRACKERS'][self.tracker]['api_key'].strip(),
         }
 
-        if datetime.date.today().year - meta['year'] <= 9:
-            console.print("[red]ERROR: Not uploading!\nMust be older than 10 Years as per rules")
-            return
-
         if meta['debug'] is False:
             response = requests.post(url=self.upload_url, json=json_data, headers=headers)
             try:
@@ -92,7 +89,16 @@ class RTF():
             console.print("[cyan]Request Data:")
             console.print(json_data)
 
-    async def search_existing(self, meta):
+    async def search_existing(self, meta, disctype):
+        disallowed_keywords = {'XXX', 'Erotic'}
+        if any(keyword in meta['keywords'] for keyword in disallowed_keywords):
+            console.print('[bold red]XXX not allowed.')
+            meta['skipping'] = "RTF"
+            return
+        if datetime.date.today().year - meta['year'] <= 9:
+            console.print("[red]ERROR: Not uploading!\nMust be older than 10 Years as per rules")
+            meta['skipping'] = "RTF"
+            return
         dupes = []
         console.print("[yellow]Searching for existing torrents on site...")
         headers = {
@@ -121,7 +127,7 @@ class RTF():
 
         return dupes
 
-    # tests if API key valid site API key expires every week so a new one has to be generated.
+    # Tests if stored API key is valid. Site API key expires every week so a new one has to be generated.
     async def api_test(self, meta):
         headers = {
             'accept': 'application/json',
@@ -146,12 +152,45 @@ class RTF():
             'password': self.config['TRACKERS'][self.tracker]['password'],
         }
 
-        response = requests.post('https://retroflix.club/api/login', headers=headers, json=json_data)
+        base_dir = meta.get('base_dir', '.')
+        config_path = f"{base_dir}/data/config.py"
 
-        if response.status_code == 201:
-            console.print('[bold green]Using New API key generated for this upload')
-            console.print('[bold green]Please update your L4G config with the below RTF API Key for future uploads')
-            console.print(f'[bold yellow]{response.json()["token"]}')
-            self.config['TRACKERS'][self.tracker]['api_key'] = response.json()["token"]
-        else:
-            console.print(f'[bold red]Error getting new API key got error code {response.status_code}, Please check username and password in config')
+        try:
+            async with httpx.AsyncClient() as client:
+                response = await client.post('https://retroflix.club/api/login', headers=headers, json=json_data)
+
+            if response.status_code == 201:
+                token = response.json().get("token")
+                if token:
+                    console.print('[bold green]Saving and using New API key generated for this upload')
+                    console.print(f'[bold yellow]{token}')
+
+                    # Update the in-memory config dictionary
+                    self.config['TRACKERS'][self.tracker]['api_key'] = token
+
+                    # Now we update the config file on disk using utf-8 encoding
+                    with open(config_path, 'r', encoding='utf-8') as file:
+                        config_data = file.read()
+
+                    # Find the RTF tracker and replace the api_key value
+                    new_config_data = re.sub(
+                        r'("RTF":\s*{[^}]*"api_key":\s*\')[^\']*(\'[^\}]*})',  # Match the api_key content only between single quotes
+                        rf'\1{token}\2',  # Replace only the content inside the quotes without adding extra backslashes
+                        config_data
+                    )
+
+                    # Write the updated config back to the file
+                    with open(config_path, 'w', encoding='utf-8') as file:
+                        file.write(new_config_data)
+
+                    console.print(f'[bold green]API Key successfully saved to {config_path}')
+                else:
+                    console.print('[bold red]API response does not contain a token.')
+            else:
+                console.print(f'[bold red]Error getting new API key: {response.status_code}, please check username and password in the config.')
+
+        except httpx.RequestError as e:
+            console.print(f'[bold red]An error occurred while requesting the API: {str(e)}')
+
+        except Exception as e:
+            console.print(f'[bold red]An unexpected error occurred: {str(e)}')

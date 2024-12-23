@@ -12,6 +12,8 @@ from pathlib import Path
 from str2bool import str2bool
 from src.trackers.COMMON import COMMON
 from datetime import datetime
+import glob
+import multiprocessing
 
 
 class MTV():
@@ -37,92 +39,84 @@ class MTV():
         ]
         pass
 
-    async def upload(self, meta):
+    async def upload(self, meta, disctype):
         common = COMMON(config=self.config)
         cookiefile = os.path.abspath(f"{meta['base_dir']}/data/cookies/MTV.pkl")
-
-        # Initiate the upload with retry logic
         await self.upload_with_retry(meta, cookiefile, common)
 
     async def upload_with_retry(self, meta, cookiefile, common, img_host_index=1):
         approved_image_hosts = ['ptpimg', 'imgbox']
+        images_reuploaded = False
 
-        # Check if the images are already hosted on an approved image host
         if all(any(host in image['raw_url'] for host in approved_image_hosts) for image in meta['image_list']):
             console.print("[green]Images are already hosted on an approved image host. Skipping re-upload.")
-            image_list = meta['image_list']  # Use the existing images
+            image_list = meta['image_list']
 
         else:
-            # Proceed with the retry logic if images are not hosted on an approved image host
+            images_reuploaded = False
             while img_host_index <= len(approved_image_hosts):
-                # Call handle_image_upload and pass the updated meta with the current image host index
-                image_list, retry_mode = await self.handle_image_upload(meta, img_host_index, approved_image_hosts)
+                image_list, retry_mode, images_reuploaded = await self.handle_image_upload(meta, img_host_index, approved_image_hosts)
 
-                # If retry_mode is True, switch to the next host
                 if retry_mode:
                     console.print(f"[yellow]Switching to the next image host. Current index: {img_host_index}")
                     img_host_index += 1
                     continue
 
-                # If we successfully uploaded images, break out of the loop
+                new_images_key = 'mtv_images_key'
                 if image_list is not None:
+                    image_list = meta[new_images_key]
                     break
 
             if image_list is None:
                 console.print("[red]All image hosts failed. Please check your configuration.")
                 return
 
-        # Proceed with the rest of the upload process
-        torrent_filename = "BASE"
-        torrent_path = f"{meta['base_dir']}/tmp/{meta['uuid']}/BASE.torrent"
-        torrent = Torrent.read(torrent_path)
+        torrent_file_path = f"{meta['base_dir']}/tmp/{meta['uuid']}/[{self.tracker}]{meta['clean_name']}.torrent"
+        if not os.path.exists(torrent_file_path):
+            torrent_filename = "BASE"
+            torrent_path = f"{meta['base_dir']}/tmp/{meta['uuid']}/BASE.torrent"
+            torrent = Torrent.read(torrent_path)
 
-        if torrent.piece_size > 8388608:  # 8 MiB in bytes
-            console.print("[red]Piece size is OVER 8M and does not work on MTV. Generating a new .torrent")
+            if torrent.piece_size > 8388608:
+                console.print("[red]Piece size is OVER 8M and does not work on MTV. Generating a new .torrent")
 
-            # Override the max_piece_size to 8 MiB
-            meta['max_piece_size'] = '8'  # 8 MiB, to ensure the new torrent adheres to this limit
+                meta['max_piece_size'] = '8'
+                if meta['is_disc']:
+                    include = []
+                    exclude = []
+                else:
+                    include = ["*.mkv", "*.mp4", "*.ts"]
+                    exclude = ["*.*", "*sample.mkv", "!sample*.*"]
 
-            # Determine include and exclude patterns based on whether it's a disc or not
-            if meta['is_disc']:
-                include = []  # Adjust as needed for disc-specific inclusions, make sure it's a list
-                exclude = []  # Adjust as needed for disc-specific exclusions, make sure it's a list
-            else:
-                include = ["*.mkv", "*.mp4", "*.ts"]
-                exclude = ["*.*", "*sample.mkv", "!sample*.*"]
+                from src.prep import Prep
+                prep = Prep(screens=meta['screens'], img_host=meta['imghost'], config=self.config)
+                new_torrent = prep.CustomTorrent(
+                    meta=meta,
+                    path=Path(meta['path']),
+                    trackers=["https://fake.tracker"],
+                    source="L4G",
+                    private=True,
+                    exclude_globs=exclude,  # Ensure this is always a list
+                    include_globs=include,  # Ensure this is always a list
+                    creation_date=datetime.now(),
+                    comment="Created by L4G's Upload Assistant",
+                    created_by="L4G's Upload Assistant"
+                )
 
-            # Create a new torrent with piece size explicitly set to 8 MiB
-            from src.prep import Prep
-            prep = Prep(screens=meta['screens'], img_host=meta['imghost'], config=self.config)
-            new_torrent = prep.CustomTorrent(
-                meta=meta,
-                path=Path(meta['path']),
-                trackers=["https://fake.tracker"],
-                source="L4G",
-                private=True,
-                exclude_globs=exclude,  # Ensure this is always a list
-                include_globs=include,  # Ensure this is always a list
-                creation_date=datetime.now(),
-                comment="Created by L4G's Upload Assistant",
-                created_by="L4G's Upload Assistant"
-            )
+                new_torrent.piece_size = 8 * 1024 * 1024
+                new_torrent.validate_piece_size()
+                new_torrent.generate(callback=prep.torf_cb, interval=5)
+                new_torrent.write(f"{meta['base_dir']}/tmp/{meta['uuid']}/MTV.torrent", overwrite=True)
 
-            # Validate and write the new torrent
-            new_torrent.validate_piece_size()
-            new_torrent.generate(callback=prep.torf_cb, interval=5)
-            new_torrent.write(f"{meta['base_dir']}/tmp/{meta['uuid']}/MTV.torrent", overwrite=True)
+                torrent_filename = "MTV"
 
-            torrent_filename = "MTV"
-
-        await common.edit_torrent(meta, self.tracker, self.source_flag, torrent_filename=torrent_filename)
+            await common.edit_torrent(meta, self.tracker, self.source_flag, torrent_filename=torrent_filename)
 
         cat_id = await self.get_cat_id(meta)
         resolution_id = await self.get_res_id(meta['resolution'])
         source_id = await self.get_source_id(meta)
         origin_id = await self.get_origin_id(meta)
         des_tags = await self.get_tags(meta)
-
-        # Edit description and other details
         await self.edit_desc(meta)
         group_desc = await self.edit_group_desc(meta)
         mtv_name = await self.edit_name(meta)
@@ -130,7 +124,7 @@ class MTV():
         anon = 1 if meta['anon'] != 0 or bool(str2bool(str(self.config['TRACKERS'][self.tracker].get('anon', "False")))) else 0
 
         desc_path = f"{meta['base_dir']}/tmp/{meta['uuid']}/[{self.tracker}]DESCRIPTION.txt"
-        desc = open(desc_path, 'r').read()
+        desc = open(desc_path, 'r', encoding='utf-8').read()
 
         torrent_file_path = f"{meta['base_dir']}/tmp/{meta['uuid']}/[{self.tracker}]{meta['clean_name']}.torrent"
         with open(torrent_file_path, 'rb') as f:
@@ -172,7 +166,9 @@ class MTV():
                         if "authkey.php" in response.url:
                             console.print("[red]No DL link in response, It may have uploaded, check manually.")
                         else:
-                            console.print("[red]Upload Failed. It doesn't look like you are logged in.")
+                            console.print("[red]Upload Failed. Either you are not logged in......")
+                            console.print("[red]You are hitting this site bug: https://www.morethantv.me/forum/thread/3338?")
+                            console.print("[red]Or you hit some other error with the torrent upload.")
                 except Exception:
                     console.print("[red]It may have uploaded, check manually.")
                     print(traceback.print_exc())
@@ -181,72 +177,141 @@ class MTV():
             console.print(data)
         return
 
-    async def handle_image_upload(self, meta, img_host_index=1, approved_image_hosts=None):
+    async def handle_image_upload(self, meta, img_host_index=1, approved_image_hosts=None, file=None):
         if approved_image_hosts is None:
             approved_image_hosts = ['ptpimg', 'imgbox']
 
-        current_img_host_key = f'img_host_{img_host_index}'
-        current_img_host = self.config.get('DEFAULT', {}).get(current_img_host_key)
+        retry_mode = False
+        images_reuploaded = False
+        new_images_key = 'mtv_images_key'
+        discs = meta.get('discs', [])  # noqa F841
+        filelist = meta.get('video', [])
+        filename = meta['filename']
+        path = meta['path']
 
-        if not current_img_host or current_img_host not in approved_image_hosts:
-            console.print("[red]Your preferred image host is not supported at MTV, re-uploading to an allowed image host.")
-            retry_mode = True  # Ensure retry_mode is set to True when switching hosts
-            meta['imghost'] = approved_image_hosts[0]  # Switch to the first approved host
-        else:
-            meta['imghost'] = current_img_host
-            retry_mode = False  # Start with retry_mode False unless we know we need to switch
+        if isinstance(filelist, str):
+            filelist = [filelist]
 
+        multi_screens = int(self.config['DEFAULT'].get('screens', 6))
+        base_dir = meta['base_dir']
+        folder_id = meta['uuid']
         from src.prep import Prep
         prep = Prep(screens=meta['screens'], img_host=meta['imghost'], config=self.config)
+        meta[new_images_key] = []
 
-        # Screenshot and upload process
-        prep.screenshots(Path(meta['path']), meta['name'], meta['uuid'], meta['base_dir'], meta)
-        return_dict = {}
+        screenshots_dir = os.path.join(base_dir, 'tmp', folder_id)
+        all_screenshots = []
 
-        # Call upload_screens with the appropriate retry_mode
-        prep.upload_screens(
-            meta,
-            screens=meta['screens'],
-            img_host_num=img_host_index,
-            i=0,
-            total_screens=meta['screens'],
-            custom_img_list=[],  # This remains to handle any custom logic in the original function
-            return_dict=return_dict,
-            retry_mode=retry_mode  # Honor the retry_mode flag passed in
+        for i, file in enumerate(filelist):
+            filename_pattern = f"{filename}*.png"
+
+            if meta['is_disc'] == "DVD":
+                existing_screens = glob.glob(f"{meta['base_dir']}/tmp/{meta['uuid']}/{meta['discs'][0]['name']}-*.png")
+            else:
+                existing_screens = glob.glob(os.path.join(screenshots_dir, filename_pattern))
+
+            if len(existing_screens) < multi_screens:
+                if meta.get('debug'):
+                    console.print("[yellow]The image host of existing images is not supported.")
+                    console.print(f"[yellow]Insufficient screenshots found: generating {multi_screens} screenshots.")
+
+                if meta['is_disc'] == "BDMV":
+                    s = multiprocessing.Process(
+                        target=prep.disc_screenshots,
+                        args=(f"FILE_{img_host_index}", meta['bdinfo'], folder_id, base_dir,
+                              meta.get('vapoursynth', False), [], meta.get('ffdebug', False), img_host_index)
+                    )
+                elif meta['is_disc'] == "DVD":
+                    s = multiprocessing.Process(
+                        target=prep.dvd_screenshots,
+                        args=(meta, 0, None, True)
+                    )
+                else:
+                    s = multiprocessing.Process(
+                        target=prep.screenshots,
+                        args=(path, f"{filename}", meta['uuid'], base_dir,
+                              meta, multi_screens + 1, True, None)
+                    )
+
+                s.start()
+                while s.is_alive():
+                    await asyncio.sleep(1)
+
+                if meta['is_disc'] == "DVD":
+                    existing_screens = glob.glob(f"{meta['base_dir']}/tmp/{meta['uuid']}/{meta['discs'][0]['name']}-*.png")
+                else:
+                    existing_screens = glob.glob(os.path.join(screenshots_dir, filename_pattern))
+
+            all_screenshots.extend(existing_screens)
+
+        if not all_screenshots:
+            console.print("[red]No screenshots were generated or found. Please check the screenshot generation process.")
+            return [], True, images_reuploaded
+
+        uploaded_images = []
+        while True:
+            current_img_host_key = f'img_host_{img_host_index}'
+            current_img_host = self.config.get('DEFAULT', {}).get(current_img_host_key)
+
+            if not current_img_host:
+                console.print("[red]No more image hosts left to try.")
+                raise Exception("No valid image host found in the config.")
+
+            if current_img_host not in approved_image_hosts:
+                console.print(f"[red]Your preferred image host '{current_img_host}' is not supported at MTV, trying next host.")
+                retry_mode = True
+                images_reuploaded = True
+                img_host_index += 1
+                continue
+            else:
+                meta['imghost'] = current_img_host
+                console.print(f"[green]Uploading to approved host '{current_img_host}'.")
+                break
+
+        uploaded_images, _ = prep.upload_screens(
+            meta, multi_screens, img_host_index, 0, multi_screens,
+            all_screenshots, {new_images_key: meta[new_images_key]}, retry_mode
         )
 
-        # Update meta['image_list'] with uploaded images
-        meta['image_list'] = return_dict.get('image_list', [])
+        if uploaded_images:
+            meta[new_images_key] = uploaded_images
 
-        # Ensure images are from approved hosts
-        if not all(any(x in image['raw_url'] for x in approved_image_hosts) for image in meta['image_list']):
+        if meta['debug']:
+            for image in uploaded_images:
+                console.print(f"[debug] Response in upload_image_task: {image['img_url']}, {image['raw_url']}, {image['web_url']}")
+
+        if not all(any(x in image['raw_url'] for x in approved_image_hosts) for image in meta.get(new_images_key, [])):
             console.print("[red]Unsupported image host detected, please use one of the approved image hosts")
-            return meta['image_list'], True  # Trigger retry_mode if switching hosts
+            return meta[new_images_key], True, images_reuploaded  # Trigger retry_mode if switching hosts
 
-        return meta['image_list'], False  # No need to retry, successful upload
+        return meta[new_images_key], False, images_reuploaded
 
     async def edit_desc(self, meta):
-        base = open(f"{meta['base_dir']}/tmp/{meta['uuid']}/DESCRIPTION.txt", 'r').read()
-        with open(f"{meta['base_dir']}/tmp/{meta['uuid']}/[{self.tracker}]DESCRIPTION.txt", 'w') as desc:
-            # adding bd_dump to description if it exits and adding empty string to mediainfo
+        base = open(f"{meta['base_dir']}/tmp/{meta['uuid']}/DESCRIPTION.txt", 'r', encoding='utf-8').read()
+
+        with open(f"{meta['base_dir']}/tmp/{meta['uuid']}/[{self.tracker}]DESCRIPTION.txt", 'w', encoding='utf-8') as desc:
             if meta['bdinfo'] is not None:
                 mi_dump = None
                 bd_dump = open(f"{meta['base_dir']}/tmp/{meta['uuid']}/BD_SUMMARY_00.txt", 'r', encoding='utf-8').read()
             else:
                 mi_dump = open(f"{meta['base_dir']}/tmp/{meta['uuid']}/MEDIAINFO_CLEANPATH.txt", 'r', encoding='utf-8').read()[:-65].strip()
                 bd_dump = None
+
             if bd_dump:
                 desc.write("[mediainfo]" + bd_dump + "[/mediainfo]\n\n")
             elif mi_dump:
                 desc.write("[mediainfo]" + mi_dump + "[/mediainfo]\n\n")
-            images = meta['image_list']
+
+            if 'mtv_images_key' in meta:
+                images = meta['mtv_images_key']
+            else:
+                images = meta['image_list']
             if len(images) > 0:
-                desc.write("[spoiler=Screenshots]")
-                for each in range(len(images)):
-                    raw_url = images[each]['raw_url']
-                    img_url = images[each]['img_url']
+                for image in images:
+                    raw_url = image['raw_url']
+                    img_url = image['img_url']
                     desc.write(f"[url={raw_url}][img=250]{img_url}[/img][/url]")
-                desc.write("[/spoiler]")
+
             desc.write(f"\n\n{base}")
             desc.close()
         return
@@ -267,11 +332,11 @@ class MTV():
         return description
 
     async def edit_name(self, meta):
-        mtv_name = meta['uuid']
-        # Try to use original filename if possible
-        if meta['source'].lower().replace('-', '') in mtv_name.replace('-', '').lower():
-            if not meta['isdir']:
-                mtv_name = os.path.splitext(mtv_name)[0]
+        if meta['scene'] is True:
+            if meta.get('scene_name') != "":
+                mtv_name = meta.get('scene_name')
+            else:
+                mtv_name = meta['uuid']
         else:
             mtv_name = meta['name']
             if meta.get('type') in ('WEBDL', 'WEBRIP', 'ENCODE') and "DD" in meta['audio']:
@@ -282,12 +347,18 @@ class MTV():
             if 'DD+' in meta.get('audio', '') and 'DDP' in meta['uuid']:
                 mtv_name = mtv_name.replace('DD+', 'DDP')
             mtv_name = mtv_name.replace('Dubbed', '').replace('Dual-Audio', 'DUAL')
+        if meta['source'].lower().replace('-', '') in mtv_name.replace('-', '').lower():
+            if not meta['isdir']:
+                # Check if there is a valid file extension, otherwise, skip the split
+                if '.' in mtv_name and mtv_name.split('.')[-1].isalpha() and len(mtv_name.split('.')[-1]) <= 4:
+                    mtv_name = os.path.splitext(mtv_name)[0]
         # Add -NoGrp if missing tag
         if meta['tag'] == "":
             mtv_name = f"{mtv_name}-NoGrp"
         mtv_name = ' '.join(mtv_name.split())
         mtv_name = re.sub(r"[^0-9a-zA-ZÀ-ÿ. &+'\-\[\]]+", "", mtv_name)
         mtv_name = mtv_name.replace(' ', '.').replace('..', '.')
+        console.print(f"[yellow]Sent this name: {mtv_name}[/yellow]")
         return mtv_name
 
     async def get_res_id(self, resolution):
@@ -359,7 +430,9 @@ class MTV():
     async def get_tags(self, meta):
         tags = []
         # Genres
-        tags.extend([x.strip(', ').lower().replace(' ', '.') for x in meta['genres'].split(',')])
+        # MTV takes issue with some of the pulled TMDB tags, and I'm not hand checking and attempting
+        # to regex however many tags need changing, so they're just geting skipped
+        # tags.extend([x.strip(', ').lower().replace(' ', '.') for x in meta['genres'].split(',')])
         # Resolution
         tags.append(meta['resolution'].lower())
         if meta['sd'] == 1:
@@ -369,8 +442,12 @@ class MTV():
         else:
             tags.append('hd')
         # Streaming Service
+        # disney+ should be disneyplus, assume every other service is same.
+        # If I'm wrong, then they can either allowing editing tags or service will just get skipped also
         if str(meta['service_longname']) != "":
-            tags.append(f"{meta['service_longname'].lower().replace(' ', '.')}.source")
+            service_name = meta['service_longname'].lower().replace(' ', '.')
+            service_name = service_name.replace('+', 'plus')  # Replace '+' with 'plus'
+            tags.append(f"{service_name}.source")
         # Release Type/Source
         for each in ['remux', 'WEB.DL', 'WEBRip', 'HDTV', 'BluRay', 'DVD', 'HDDVD']:
             if (each.lower().replace('.', '') in meta['type'].lower()) or (each.lower().replace('-', '') in meta['source']):
@@ -380,9 +457,9 @@ class MTV():
             if meta.get('tv_pack', 0) == 0:
                 # Episodes
                 if meta['sd'] == 1:
-                    tags.extend(['episode.release', 'sd.episode'])
+                    tags.extend(['sd.episode'])
                 else:
-                    tags.extend(['episode.release', 'hd.episode'])
+                    tags.extend(['hd.episode'])
             else:
                 # Seasons
                 if meta['sd'] == 1:
@@ -540,7 +617,7 @@ class MTV():
                 console.print(resp.url)
         return
 
-    async def search_existing(self, meta):
+    async def search_existing(self, meta, disctype):
         dupes = []
         console.print("[yellow]Searching for existing torrents on site...")
         params = {

@@ -28,7 +28,7 @@ class THR():
         self.banned_groups = [""]
         pass
 
-    async def upload(self, session, meta):
+    async def upload(self, session, meta, disctype):
         await self.edit_torrent(meta)
         cat_id = await self.get_cat_id(meta)
         subs = self.get_subtitles(meta)
@@ -59,7 +59,7 @@ class THR():
                 f.close()
             # bd_file = None
 
-        with open(f"{meta['base_dir']}/tmp/{meta['uuid']}/[THR]DESCRIPTION.txt", 'r') as f:
+        with open(f"{meta['base_dir']}/tmp/{meta['uuid']}/[THR]DESCRIPTION.txt", 'r', encoding='utf-8') as f:
             desc = f.read()
             f.close()
 
@@ -81,7 +81,7 @@ class THR():
             'tube': meta.get('youtube', '')
         }
         headers = {
-            'User-Agent': f'Upload Assistant/2.1 ({platform.system()} {platform.release()})'
+            'User-Agent': f'Upload Assistant/2.2 ({platform.system()} {platform.release()})'
         }
         # If pronfo fails, put mediainfo into THR parser
         if meta.get('is_disc', '') != 'BDMV':
@@ -169,7 +169,7 @@ class THR():
 
     async def edit_desc(self, meta):
         pronfo = False
-        base = open(f"{meta['base_dir']}/tmp/{meta['uuid']}/DESCRIPTION.txt", 'r').read()
+        base = open(f"{meta['base_dir']}/tmp/{meta['uuid']}/DESCRIPTION.txt", 'r', encoding='utf-8').read()
         with open(f"{meta['base_dir']}/tmp/{meta['uuid']}/[THR]DESCRIPTION.txt", 'w', encoding='utf-8') as desc:
             if meta['tag'] == "":
                 tag = ""
@@ -257,7 +257,7 @@ class THR():
             desc.close()
         return pronfo
 
-    def search_existing(self, session, imdb_id):
+    def search_existing(self, session, imdb_id, disctype):
         from bs4 import BeautifulSoup
         imdb_id = imdb_id.replace('tt', '')
         search_url = f"https://www.torrenthr.org/browse.php?search={imdb_id}&blah=2&incldead=1"

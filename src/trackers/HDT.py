@@ -8,7 +8,7 @@ from bs4 import BeautifulSoup
 from unidecode import unidecode
 from pymediainfo import MediaInfo
 from src.trackers.COMMON import COMMON
-from src.exceptions import * # noqa F403
+from src.exceptions import *  # noqa F403
 from src.console import console
 
 
@@ -102,11 +102,7 @@ class HDT():
         hdt_name = hdt_name.replace(':', '').replace('..', ' ').replace('  ', ' ')
         return hdt_name
 
-    ###############################################################
-    ######   STOP HERE UNLESS EXTRA MODIFICATION IS NEEDED   ###### # noqa E266
-    ###############################################################
-
-    async def upload(self, meta):
+    async def upload(self, meta, disctype):
         common = COMMON(config=self.config)
         await common.edit_torrent(meta, self.tracker, self.source_flag)
         await self.edit_desc(meta)
@@ -127,7 +123,7 @@ class HDT():
                     hdt_name = hdt_name_manually
 
         # Upload
-        hdt_desc = open(f"{meta['base_dir']}/tmp/{meta['uuid']}/[{self.tracker}]DESCRIPTION.txt", 'r', newline='').read()
+        hdt_desc = open(f"{meta['base_dir']}/tmp/{meta['uuid']}/[{self.tracker}]DESCRIPTION.txt", 'r', newline='', encoding='utf-8').read()
         torrent_path = f"{meta['base_dir']}/tmp/{meta['uuid']}/[{self.tracker}]{meta['clean_name']}.torrent"
 
         with open(torrent_path, 'rb') as torrentFile:
@@ -172,38 +168,61 @@ class HDT():
                 data['anonymous'] = 'true'
 
             # Send
-            url = "https://hd-torrents.org/upload.php"
+            url = "https://hd-torrents.net/upload.php"
             if meta['debug']:
                 console.print(url)
+                console.print("Data to be sent:", style="bold blue")
                 console.print(data)
-            else:
-                with requests.Session() as session:
-                    cookiefile = os.path.abspath(f"{meta['base_dir']}/data/cookies/HDT.txt")
+                console.print("Files being sent:", style="bold blue")
+                console.print(files)
+            with requests.Session() as session:
+                cookiefile = os.path.abspath(f"{meta['base_dir']}/data/cookies/HDT.txt")
 
-                    session.cookies.update(await common.parseCookieFile(cookiefile))
-                    up = session.post(url=url, data=data, files=files)
-                    torrentFile.close()
+                if meta['debug']:
+                    console.print(f"Cookie file path: {cookiefile}")
 
-                    # Match url to verify successful upload
-                    search = re.search(r"download\.php\?id\=([a-z0-9]+)", up.text).group(1)
-                    if search:
-                        # modding existing torrent for adding to client instead of downloading torrent from site.
-                        await common.add_tracker_torrent(meta, self.tracker, self.source_flag, self.config['TRACKERS']['HDT'].get('my_announce_url'), "https://hd-torrents.org/details.php?id=" + search)
-                    else:
-                        console.print(data)
-                        console.print("\n\n")
-                        console.print(up.text)
-                        raise UploadException(f"Upload to HDT Failed: result URL {up.url} ({up.status_code}) was not expected", 'red') # noqa F405
+                session.cookies.update(await common.parseCookieFile(cookiefile))
+
+                if meta['debug']:
+                    console.print(f"Session cookies: {session.cookies}")
+
+                up = session.post(url=url, data=data, files=files)
+                torrentFile.close()
+
+                # Debug response
+                if meta['debug']:
+                    console.print(f"Response URL: {up.url}")
+                    console.print(f"Response Status Code: {up.status_code}")
+                    console.print("Response Headers:", style="bold blue")
+                    console.print(up.headers)
+                    console.print("Response Text (truncated):", style="dim")
+                    console.print(up.text[:500] + "...")
+
+                # Match url to verify successful upload
+                search = re.search(r"download\.php\?id\=([a-z0-9]+)", up.text)
+                if search:
+                    torrent_id = search.group(1)
+                    if meta['debug']:
+                        console.print(f"Upload Successful: Torrent ID {torrent_id}", style="bold green")
+
+                    # Modding existing torrent for adding to client instead of downloading torrent from site
+                    await common.add_tracker_torrent(meta, self.tracker, self.source_flag, self.config['TRACKERS']['HDT'].get('my_announce_url'), "")
+                else:
+                    console.print(data)
+                    console.print("Failed to find download link in response text.", style="bold red")
+                    console.print("Response Data (full):", style="dim")
+                    console.print(up.text)
+                    raise UploadException(f"Upload to HDT Failed: result URL {up.url} ({up.status_code}) was not expected", 'red')  # noqa F405
         return
 
-    async def search_existing(self, meta):
+    async def search_existing(self, meta, disctype):
         dupes = []
         with requests.Session() as session:
             common = COMMON(config=self.config)
             cookiefile = os.path.abspath(f"{meta['base_dir']}/data/cookies/HDT.txt")
             session.cookies.update(await common.parseCookieFile(cookiefile))
 
-            search_url = "https://hd-torrents.org/torrents.php"
+            search_url = "https://hd-torrents.net/torrents.php"
             csrfToken = await self.get_csrfToken(session, search_url)
             if int(meta['imdb_id'].replace('tt', '')) != 0:
                 params = {
@@ -241,7 +260,7 @@ class HDT():
 
     async def validate_cookies(self, meta, cookiefile):
         common = COMMON(config=self.config)
-        url = "https://hd-torrents.org/index.php"
+        url = "https://hd-torrents.net/index.php"
         cookiefile = f"{meta['base_dir']}/data/cookies/HDT.txt"
         if os.path.exists(cookiefile):
             with requests.Session() as session:
@@ -258,35 +277,6 @@ class HDT():
         else:
             return False
 
-    """
-    Old login method, disabled because of site's DDOS protection. Better to use exported cookies.
-
-
-    async def login(self, cookiefile):
-        with requests.Session() as session:
-            url = "https://hd-torrents.org/login.php"
-            csrfToken = await self.get_csrfToken(session, url)
-            data = {
-                'csrfToken' : csrfToken,
-                'uid' : self.username,
-                'pwd' : self.password,
-                'submit' : 'Confirm'
-            }
-            response = session.post('https://hd-torrents.org/login.php', data=data)
-            await asyncio.sleep(0.5)
-            index = 'https://hd-torrents.org/index.php'
-            response = session.get(index)
-            if response.text.find("Logout") != -1:
-                console.print('[green]Successfully logged into HDT')
-                with open(cookiefile, 'wb') as cf:
-                    pickle.dump(session.cookies, cf)
-            else:
-                console.print('[bold red]Something went wrong while trying to log into HDT. Make sure your username and password are correct')
-                await asyncio.sleep(1)
-                console.print(response.url)
-        return
-    """
-
     async def get_csrfToken(self, session, url):
         r = session.get(url)
         await asyncio.sleep(0.5)
@@ -296,7 +286,7 @@ class HDT():
 
     async def edit_desc(self, meta):
         # base = open(f"{meta['base_dir']}/tmp/{meta['uuid']}/DESCRIPTION.txt", 'r').read()
-        with open(f"{meta['base_dir']}/tmp/{meta['uuid']}/[{self.tracker}]DESCRIPTION.txt", 'w', newline='') as descfile:
+        with open(f"{meta['base_dir']}/tmp/{meta['uuid']}/[{self.tracker}]DESCRIPTION.txt", 'w', newline='', encoding='utf-8') as descfile:
             if meta['is_disc'] != 'BDMV':
                 # Beautify MediaInfo for HDT using custom template
                 video = meta['filelist'][0]

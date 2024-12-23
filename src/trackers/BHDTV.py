@@ -30,7 +30,7 @@ class BHDTV():
         self.banned_groups = []
         pass
 
-    async def upload(self, meta):
+    async def upload(self, meta, disctype):
         common = COMMON(config=self.config)
         await common.edit_torrent(meta, self.tracker, self.source_flag)
         await self.edit_desc(meta)
@@ -51,7 +51,7 @@ class BHDTV():
                 str2bool(self.config['TRACKERS'][self.tracker].get('anon', "False"))) is False:
             anon = 0
         else:
-            anon = 1 #noaq F841
+            anon = 1  # noqa F841
 
         if meta['bdinfo'] is not None:
             mi_dump = None
@@ -59,7 +59,7 @@ class BHDTV():
         else:
             mi_dump = open(f"{meta['base_dir']}/tmp/{meta['uuid']}/MEDIAINFO_CLEANPATH.txt", 'r', encoding='utf-8').read()
             bd_dump = None
-        desc = open(f"{meta['base_dir']}/tmp/{meta['uuid']}/[{self.tracker}]DESCRIPTION.txt", 'r').read()
+        desc = open(f"{meta['base_dir']}/tmp/{meta['uuid']}/[{self.tracker}]DESCRIPTION.txt", 'r', encoding='utf-8').read()
         open_torrent = open(f"{meta['base_dir']}/tmp/{meta['uuid']}/[{self.tracker}]{meta['clean_name']}.torrent", 'rb')
         files = {'file': open_torrent}
 
@@ -122,7 +122,7 @@ class BHDTV():
 
     async def get_type_movie_id(self, meta):
         type_id = '0'
-        test = meta['type'] #noqa F841
+        test = meta['type']  # noqa F841
         if meta['type'] == 'DISC':
             if meta['3D']:
                 type_id = '46'
@@ -185,8 +185,8 @@ class BHDTV():
         return resolution_id
 
     async def edit_desc(self, meta):
-        base = open(f"{meta['base_dir']}/tmp/{meta['uuid']}/DESCRIPTION.txt", 'r').read()
-        with open(f"{meta['base_dir']}/tmp/{meta['uuid']}/[{self.tracker}]DESCRIPTION.txt", 'w') as desc:
+        base = open(f"{meta['base_dir']}/tmp/{meta['uuid']}/DESCRIPTION.txt", 'r', encoding='utf-8').read()
+        with open(f"{meta['base_dir']}/tmp/{meta['uuid']}/[{self.tracker}]DESCRIPTION.txt", 'w', encoding='utf-8') as desc:
             desc.write(base.replace("[img=250]", "[img=250x250]"))
             images = meta['image_list']
             if len(images) > 0:
@@ -198,7 +198,7 @@ class BHDTV():
             desc.close()
         return
 
-    async def search_existing(self, meta):
+    async def search_existing(self, meta, disctype):
         console.print("[red]Dupes must be checked Manually")
         return ['Dupes must be checked Manually']
         # hopefully someone else has the time to implement this.

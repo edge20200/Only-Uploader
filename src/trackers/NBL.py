@@ -43,17 +43,14 @@ class NBL():
         # Leave this in so manual works
         return
 
-    async def upload(self, meta):
-        if meta['category'] != 'TV':
-            console.print("[red]Only TV Is allowed at NBL")
-            return
+    async def upload(self, meta, disctype):
         common = COMMON(config=self.config)
         await common.edit_torrent(meta, self.tracker, self.source_flag)
 
         if meta['bdinfo'] is not None:
             mi_dump = open(f"{meta['base_dir']}/tmp/{meta['uuid']}/BD_SUMMARY_00.txt", 'r', encoding='utf-8').read()
         else:
-            mi_dump = open(f"{meta['base_dir']}/tmp/{meta['uuid']}/MEDIAINFO.txt", 'r', encoding='utf-8').read()[:-65].strip()
+            mi_dump = open(f"{meta['base_dir']}/tmp/{meta['uuid']}/MEDIAINFO_CLEANPATH.txt", 'r', encoding='utf-8').read()[:-65].strip()
         open_torrent = open(f"{meta['base_dir']}/tmp/{meta['uuid']}/[{self.tracker}]{meta['clean_name']}.torrent", 'rb')
         files = {'file_input': open_torrent}
         data = {
@@ -82,7 +79,11 @@ class NBL():
             console.print(data)
         open_torrent.close()
 
-    async def search_existing(self, meta):
+    async def search_existing(self, meta, disctype):
+        if meta['category'] != 'TV':
+            console.print("[red]Only TV Is allowed at NBL")
+            meta['skipping'] = "NBL"
+            return
         dupes = []
         console.print("[yellow]Searching for existing torrents on site...")
         if int(meta.get('tvmaze_id', 0)) != 0:

@@ -11,7 +11,7 @@ import cli_ui
 from bs4 import BeautifulSoup
 
 from src.trackers.COMMON import COMMON
-from src.exceptions import * # noqa F403
+from src.exceptions import *  # noqa F403
 from src.console import console
 
 
@@ -100,11 +100,7 @@ class FL():
         fl_name = fl_name.replace(' ', '.').replace('..', '.')
         return fl_name
 
-    ###############################################################
-    ######   STOP HERE UNLESS EXTRA MODIFICATION IS NEEDED   ######  # noqa E266
-    ###############################################################
-
-    async def upload(self, meta):
+    async def upload(self, meta, disctype):
         common = COMMON(config=self.config)
         await common.edit_torrent(meta, self.tracker, self.source_flag)
         await self.edit_desc(meta)
@@ -137,7 +133,7 @@ class FL():
                 torrentFileName = meta.get('uuid')
 
         # Download new .torrent from site
-        fl_desc = open(f"{meta['base_dir']}/tmp/{meta['uuid']}/[{self.tracker}]DESCRIPTION.txt", 'r', newline='').read()
+        fl_desc = open(f"{meta['base_dir']}/tmp/{meta['uuid']}/[{self.tracker}]DESCRIPTION.txt", 'r', newline='', encoding='utf-8').read()
         torrent_path = f"{meta['base_dir']}/tmp/{meta['uuid']}/[{self.tracker}]{meta['clean_name']}.torrent"
         if meta['bdinfo'] is not None:
             mi_dump = open(f"{meta['base_dir']}/tmp/{meta['uuid']}/BD_SUMMARY_00.txt", 'r', encoding='utf-8').read()
@@ -191,10 +187,10 @@ class FL():
                         console.print(data)
                         console.print("\n\n")
                         console.print(up.text)
-                        raise UploadException(f"Upload to FL Failed: result URL {up.url} ({up.status_code}) was not expected", 'red') # noqa F405
+                        raise UploadException(f"Upload to FL Failed: result URL {up.url} ({up.status_code}) was not expected", 'red')  # noqa F405
         return
 
-    async def search_existing(self, meta):
+    async def search_existing(self, meta, disctype):
         dupes = []
         with requests.Session() as session:
             cookiefile = os.path.abspath(f"{meta['base_dir']}/data/cookies/FL.pkl")
@@ -214,7 +210,7 @@ class FL():
                     'cat': await self.get_category_id(meta),
                     'searchin': '0'
                 }
-            
+
             r = session.get(search_url, params=params)
             await asyncio.sleep(0.5)
             soup = BeautifulSoup(r.text, 'html.parser')
@@ -299,8 +295,8 @@ class FL():
         return
 
     async def edit_desc(self, meta):
-        base = open(f"{meta['base_dir']}/tmp/{meta['uuid']}/DESCRIPTION.txt", 'r').read()
-        with open(f"{meta['base_dir']}/tmp/{meta['uuid']}/[{self.tracker}]DESCRIPTION.txt", 'w', newline='') as descfile:
+        base = open(f"{meta['base_dir']}/tmp/{meta['uuid']}/DESCRIPTION.txt", 'r', encoding='utf-8').read()
+        with open(f"{meta['base_dir']}/tmp/{meta['uuid']}/[{self.tracker}]DESCRIPTION.txt", 'w', newline='', encoding='utf-8') as descfile:
             from src.bbcode import BBCODE
             bbcode = BBCODE()
 
