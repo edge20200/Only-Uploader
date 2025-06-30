@@ -1325,7 +1325,7 @@ class Prep():
                     pass
                 elif image_size <= 10000000 and self.img_host in ["imgbox", "pixhost"]:
                     pass
-                elif self.img_host in ["ptpimg", "lensdump", "ptscreens", "oeimg"]:
+                elif self.img_host in ["ptpimg", "lensdump", "ptscreens", "onlyimage"]:
                     pass
                 else:
                     console.print("[red]Image too large for your image host, retaking.")
@@ -1734,7 +1734,7 @@ class Prep():
                     pass
                 elif image_size <= 10000000 and self.img_host in ["imgbox", "pixhost"] and not retake:
                     pass
-                elif self.img_host in ["ptpimg", "lensdump", "ptscreens", "oeimg"] and not retake:
+                elif self.img_host in ["ptpimg", "lensdump", "ptscreens", "onlyimage"] and not retake:
                     pass
                 elif self.img_host == "freeimage.host":
                     console.print("[bold red]Support for freeimage.host has been removed. Please remove it from your config.")
@@ -3103,14 +3103,14 @@ class Prep():
                     console.print(f"[red]Request failed with error: {e}")
                     return {'status': 'failed', 'reason': str(e)}
 
-            elif img_host == "oeimg":
-                url = "https://imgoe.download/api/1/upload"
+            elif img_host == "onlyimage":
+                url = "https://onlyimage.org/api/1/upload"
                 try:
                     data = {
                         'image': base64.b64encode(open(image, "rb").read()).decode('utf8')
                     }
                     headers = {
-                        'X-API-Key': self.config['DEFAULT']['oeimg_api'],
+                        'X-API-Key': self.config['DEFAULT']['onlyimage_api'],
                     }
                     response = requests.post(url, data=data, headers=headers, timeout=timeout)
                     if meta['debug']:
@@ -3119,8 +3119,8 @@ class Prep():
 
                     response_data = response.json()
                     if response.status_code != 200 or not response_data.get('success'):
-                        console.print("[yellow]OEimg failed, trying next image host")
-                        return {'status': 'failed', 'reason': 'OEimg upload failed'}
+                        console.print("[yellow]OnlyImage failed, trying next image host")
+                        return {'status': 'failed', 'reason': 'OnlyImage upload failed'}
 
                     img_url = response_data['data']['image']['url']
                     raw_url = response_data['data']['image']['url']
@@ -3231,7 +3231,7 @@ class Prep():
         upload_tasks = [(image, img_host, self.config, meta) for image in image_glob[:images_needed]]
 
         host_limits = {
-            "oeimg": 6,
+            "onlyimage": 6,
             "ptscreens": 1,
             "lensdump": 1,
         }
