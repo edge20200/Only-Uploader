@@ -25,7 +25,7 @@ A simple tool to take the work out of uploading.
   Built with updated BDInfoCLI from https://github.com/rokibhasansagar/BDInfoCLI-ng
 
   ## Image Hosts:
-  - OnlyImage - oeimg
+  - OnlyImage - onlyimage
   - ImgBB - imgbb
   - PTPimg - ptpimg
   - ImageBox - imgbox
