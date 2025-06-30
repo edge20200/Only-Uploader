@@ -11,10 +11,10 @@ config = {
         "ptpimg_api": "ptpimg api key",
         "lensdump_api": "lensdump api key",
         "ptscreens_api": "ptscreens api key",
-        "oeimg_api": "oeimg api key",
+        "onlyimage_api": "onlyimage api key",
 
         # Order of image hosts, and backup image hosts
-        "img_host_1": "oeimg",
+        "img_host_1": "onlyimage",
         "img_host_2": "imgbb",
         "img_host_3": "ptpimg",
         "img_host_4": "imgbox",
