@@ -43,6 +43,8 @@ from src.trackers.PSS import PSS
 from src.trackers.ULCX import ULCX
 from src.trackers.SPD import SPD
 from src.trackers.YOINK import YOINK
+from src.trackers.YUS import YUS
+from src.trackers.SP import SP
 from src.trackers.PTT import PTT
 import json
 from pathlib import Path
@@ -529,7 +531,7 @@ async def do_the_thing(base_dir):
         common = COMMON(config=config)
         api_trackers = [
             'ACM', 'AITHER', 'AL', 'BHD', 'BLU', 'CBR', 'FNP', 'HUNO', 'JPTV', 'LCD', 'LST', 'LT',
-            'OE', 'OTW', 'PSS', 'RF', 'R4E', 'SHRI', 'TIK', 'ULCX', 'UTP', 'YOINK', 'PTT'
+            'OE', 'OTW', 'PSS', 'RF', 'R4E', 'SHRI', 'TIK', 'ULCX', 'UTP', 'YOINK', 'PTT', 'YUS', 'SP'
         ]
         other_api_trackers = [
             'ANT', 'BHDTV', 'NBL', 'RTF', 'SN', 'SPD', 'TL', 'TVC'
@@ -542,7 +544,7 @@ async def do_the_thing(base_dir):
             'FNP': FNP, 'FL': FL, 'HDB': HDB, 'HDT': HDT, 'HP': HP, 'HUNO': HUNO, 'JPTV': JPTV, 'LCD': LCD,
             'LST': LST, 'LT': LT, 'MTV': MTV, 'NBL': NBL, 'OE': OE, 'OTW': OTW, 'PSS': PSS, 'PTP': PTP, 'PTER': PTER,
             'R4E': R4E, 'RF': RF, 'RTF': RTF, 'SHRI': SHRI, 'SN': SN, 'SPD': SPD, 'THR': THR,
-            'TIK': TIK, 'TL': TL, 'TVC': TVC, 'TTG': TTG, 'ULCX': ULCX, 'UTP': UTP, 'YOINK': YOINK, 'PTT': PTT,
+            'TIK': TIK, 'TL': TL, 'TVC': TVC, 'TTG': TTG, 'ULCX': ULCX, 'UTP': UTP, 'YOINK': YOINK, 'YUS': YUS, 'SP': SP, 'PTT': PTT,
         }
 
         tracker_capabilities = {
