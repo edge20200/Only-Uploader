@@ -1,5 +1,7 @@
 # Only-Uploader
 
+# Updated to work with new Unit3d Updates with hash downloads. Blu,RF,YS are updated
+
 Forked from L4G Upload Assistant, thanks for all the work L4G on this tool and all the forks and updates. Shoutout Audionut and Uploarr
 
 This fork is being maintained by OE.
@@ -17,7 +19,7 @@ A simple tool to take the work out of uploading.
   - Can re-use existing torrents instead of hashing new
   - Generates proper name for your upload using Mediainfo/BDInfo and TMDb/IMDb conforming to site rules
   - Checks for existing releases already on site
-  - Uploads to OE/PTP/BLU/BHD/Aither/THR/R4E(limited)/HP/ACM/LCD/LST/NBL/ANT/FL/HUNO/RF/SN/RTF/OTW/FNP/CBR/UTP/AL/ULCX/HDB/YOINK/TVC/TIK/SPD/SHRI/PTT/PSS
+  - Uploads to OE/PTP/BLU/BHD/Aither/THR/R4E(limited)/HP/ACM/LCD/LST/NBL/ANT/FL/HUNO/RF/SN/RTF/OTW/FNP/CBR/UTP/AL/ULCX/HDB/YOINK/TVC/TIK/SPD/SHRI/PTT/PSS/YS/SP
   - Adds to your client with fast resume, seeding instantly (rtorrent/qbittorrent/deluge/watch folder)
   - ALL WITH MINIMAL INPUT!
   - Currently works with .mkv/.mp4/Blu-ray/DVD/HD-DVDs
