@@ -284,6 +284,11 @@ config = {
             "api_key": "SPEEDAPP API KEY",
             "announce_url": "https://ramjet.speedapp.io/<PASSKEY>/announce",
         },
+        "SP": {
+            "api_key": "SeedPool api key",
+            "announce_url": "https://seedpool.org/announce/customannounceurl",
+            # "anon" : False,
+        },
         "THR": {
             "username": "username",
             "password": "password",
@@ -337,6 +342,11 @@ config = {
         "YOINK": {
             "api_key": "YOINK api key",
             "announce_url": "https://yoinked.org/announce/customannounceurl",
+            # "anon" : "False"
+        },
+        "YUS": {
+            "api_key": "yu-scene api key",
+            "announce_url": "https://yu-scene.net/announce/customannounceurl",
             # "anon" : "False"
         },
     },
