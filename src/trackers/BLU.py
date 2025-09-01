@@ -126,10 +126,24 @@ class BLU():
         if meta['debug'] is False:
             response = requests.post(url=self.upload_url, files=files, data=data, headers=headers, params=params)
             try:
-                console.print(response.json())
-            except Exception:
-                console.print("It may have uploaded, go check")
+                resp_json = response.json()
+                console.print(resp_json)
 
+                # 🔥 Download the torrent file after upload
+                if "data" in resp_json and resp_json["data"]:
+                    await common.add_tracker_torrent(
+                        meta,
+                        self.tracker,
+                        self.source_flag,
+                        self.config['TRACKERS'][self.tracker].get('announce_url'),
+                        "https://blutopia.cc/torrents/" + str(resp_json["data"]),
+                        headers=headers,
+                        params=params,
+                        downurl=resp_json["data"]
+                    )
+            except Exception as e:
+                console.print(f"[red]Error while uploading or downloading torrent: {e}[/red]")
+                console.print("It may have uploaded, go check")
                 return
         else:
             console.print("[cyan]Request Data:")
