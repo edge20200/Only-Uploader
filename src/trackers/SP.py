@@ -29,8 +29,6 @@ class SP():
 
         if mal_id != 0:
             return '6'
-        if tv_pack != 0:
-            return '13'
         if self.contains_sports_patterns(release_title):
             return '8'
 
