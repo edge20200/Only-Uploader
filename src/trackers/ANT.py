@@ -60,6 +60,29 @@ class ANT():
             flags.append('Remux')
         return flags
 
+    async def get_audio(self, meta):
+        '''
+        Possible values:
+        MP2, MP3, AAC, AC3, DTS, FLAC, PCM, True-HD, Opus
+        '''
+        audio = meta.get('audio', '').upper()
+        audio_map = {
+            'MP2': 'MP2',
+            'MP3': 'MP3',
+            'AAC': 'AAC',
+            'DD': 'AC3',
+            'DTS': 'DTS',
+            'FLAC': 'FLAC',
+            'PCM': 'PCM',
+            'TRUEHD': 'True-HD',
+            'OPUS': 'Opus'
+        }
+        for key, value in audio_map.items():
+            if key in audio:
+                return value
+        console.print(f'{self.tracker}: Unexpected audio format: {audio}. Must be one of: {list(audio_map.values())}')
+        return None
+
     async def upload(self, meta, disctype):
         common = COMMON(config=self.config)
         torrent_filename = "BASE"
@@ -97,16 +120,20 @@ class ANT():
             mi_dump = media_info_output.replace('\r\n', '\n')
         else:
             mi_dump = open(f"{meta['base_dir']}/tmp/{meta['uuid']}/MEDIAINFO.txt", 'r', encoding='utf-8').read()
+
         open_torrent = open(f"{meta['base_dir']}/tmp/{meta['uuid']}/[{self.tracker}]{meta['clean_name']}.torrent", 'rb')
         files = {'file_input': open_torrent}
         data = {
+            'type': 0,  # Added from ANT(1).py
+            'audioformat': await self.get_audio(meta),  # Added from ANT(1).py
             'api_key': self.config['TRACKERS'][self.tracker]['api_key'].strip(),
             'action': 'upload',
             'tmdbid': meta['tmdb'],
             'mediainfo': mi_dump,
             'flags[]': flags,
             'anonymous': anon,
-            'screenshots': '\n'.join([x['raw_url'] for x in meta['image_list']][:4])
+            'screenshots': '\n'.join([x['raw_url'] for x in meta['image_list']][:4]),
+            'release_desc': await self.edit_desc(meta)  # Added from ANT(1).py
         }
         if meta['bdinfo'] is not None:
             data.update({
@@ -118,7 +145,7 @@ class ANT():
             # ID of "Scene?" checkbox on upload form is actually "censored"
             data['censored'] = 1
         headers = {
-            'User-Agent': f'Upload Assistant/2.2 ({platform.system()} {platform.release()})'
+            'User-Agent': f'Only-Uploader/1.0 ({platform.system()} {platform.release()})'
         }
 
         try:
@@ -129,7 +156,7 @@ class ANT():
                 else:
                     response_data = {
                         "error": f"Unexpected status code: {response.status_code}",
-                        "response_content": response.text  # or use response.json() if JSON is expected
+                        "response_content": response.text
                     }
                 console.print(response_data)
             else:
@@ -139,6 +166,10 @@ class ANT():
             open_torrent.close()
 
     async def edit_desc(self, meta):
+        if meta.get('is_disc') == 'BDMV':
+            bd_info = meta.get('discs', [{}])[0].get('summary', '')
+            if bd_info:
+                return f'[spoiler=BDInfo][pre]{bd_info}[/pre][/spoiler]'
         return
 
     async def search_existing(self, meta, disctype):
