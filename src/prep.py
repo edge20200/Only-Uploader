@@ -4089,7 +4089,10 @@ class Prep():
             info = ia.get_movie(imdbID)
             imdb_info['title'] = info.get('title')
             imdb_info['year'] = info.get('year')
-            imdb_info['aka'] = info.get('original title', info.get('localized title', imdb_info['title'])).replace(' - IMDb', '')
+            imdb_info['aka'] = (info.get('original title')
+                    or info.get('localized title')
+                    or imdb_info['title']
+                    or '').replace(' - IMDb', '')
             imdb_info['type'] = info.get('kind')
             imdb_info['imdbID'] = info.get('imdbID')
             imdb_info['runtime'] = info.get('runtimes', ['0'])[0]
