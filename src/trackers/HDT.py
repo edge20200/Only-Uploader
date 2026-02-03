@@ -3,6 +3,7 @@ import asyncio
 import re
 import os
 import cli_ui
+import platform
 from str2bool import str2bool
 from bs4 import BeautifulSoup
 from unidecode import unidecode
@@ -98,7 +99,7 @@ class HDT():
             hdt_name = hdt_name.replace(' DV ', ' DoVi ')
 
         hdt_name = ' '.join(hdt_name.split())
-        hdt_name = re.sub(r"[^0-9a-zA-ZÀ-ÿ. &+'\-\[\]]+", "", hdt_name)
+        hdt_name = re.sub(r"[^0-9a-zA-Z\u00C0-\u00FF. &+'\-\[\]]+", "", hdt_name)
         hdt_name = hdt_name.replace(':', '').replace('..', ' ').replace('  ', ' ')
         return hdt_name
 
@@ -169,6 +170,9 @@ class HDT():
 
             # Send
             url = "https://hd-torrents.net/upload.php"
+            headers = {
+                'User-Agent': f'Upload Assistant/2.2 ({platform.system()} {platform.release()})'
+            }
             if meta['debug']:
                 console.print(url)
                 console.print("Data to be sent:", style="bold blue")
@@ -186,7 +190,7 @@ class HDT():
                 if meta['debug']:
                     console.print(f"Session cookies: {session.cookies}")
 
-                up = session.post(url=url, data=data, files=files)
+                up = session.post(url=url, data=data, files=files, headers=headers)
                 torrentFile.close()
 
                 # Debug response
@@ -217,6 +221,9 @@ class HDT():
 
     async def search_existing(self, meta, disctype):
         dupes = []
+        headers = {
+            'User-Agent': f'Upload Assistant/2.2 ({platform.system()} {platform.release()})'
+        }
         with requests.Session() as session:
             common = COMMON(config=self.config)
             cookiefile = os.path.abspath(f"{meta['base_dir']}/data/cookies/HDT.txt")
@@ -240,7 +247,7 @@ class HDT():
                     'options': '3'
                 }
 
-            r = session.get(search_url, params=params)
+            r = session.get(search_url, params=params, headers=headers)
             await asyncio.sleep(0.5)
             soup = BeautifulSoup(r.text, 'html.parser')
             find = soup.find_all('a', href=True)
@@ -261,11 +268,14 @@ class HDT():
     async def validate_cookies(self, meta, cookiefile):
         common = COMMON(config=self.config)
         url = "https://hd-torrents.net/index.php"
+        headers = {
+            'User-Agent': f'Upload Assistant/2.2 ({platform.system()} {platform.release()})'
+        }
         cookiefile = f"{meta['base_dir']}/data/cookies/HDT.txt"
         if os.path.exists(cookiefile):
             with requests.Session() as session:
                 session.cookies.update(await common.parseCookieFile(cookiefile))
-                res = session.get(url=url)
+                res = session.get(url=url, headers=headers)
                 if meta['debug']:
                     console.print('[cyan]Cookies:')
                     console.print(session.cookies.get_dict())
@@ -278,7 +288,10 @@ class HDT():
             return False
 
     async def get_csrfToken(self, session, url):
-        r = session.get(url)
+        headers = {
+            'User-Agent': f'Upload Assistant/2.2 ({platform.system()} {platform.release()})'
+        }
+        r = session.get(url, headers=headers)
         await asyncio.sleep(0.5)
         soup = BeautifulSoup(r.text, 'html.parser')
         csrfToken = soup.find('input', {'name': 'csrfToken'}).get('value')
