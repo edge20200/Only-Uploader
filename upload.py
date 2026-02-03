@@ -46,6 +46,8 @@ from src.trackers.YOINK import YOINK
 from src.trackers.YUS import YUS
 from src.trackers.SP import SP
 from src.trackers.PTT import PTT
+from src.trackers.LUME import LUME
+from src.trackers.STC import STC
 import json
 from pathlib import Path
 import asyncio
@@ -64,7 +66,7 @@ from rich.markdown import Markdown
 from rich.style import Style
 
 
-cli_ui.setup(color='always', title="L4G's Upload Assistant")
+cli_ui.setup(color='always', title="Only Uploader")
 
 base_dir = os.path.abspath(os.path.dirname(__file__))
 
@@ -531,7 +533,7 @@ async def do_the_thing(base_dir):
         common = COMMON(config=config)
         api_trackers = [
             'ACM', 'AITHER', 'AL', 'BHD', 'BLU', 'CBR', 'FNP', 'HUNO', 'JPTV', 'LCD', 'LST', 'LT',
-            'OE', 'OTW', 'PSS', 'RF', 'R4E', 'SHRI', 'TIK', 'ULCX', 'UTP', 'YOINK', 'PTT', 'YUS', 'SP'
+            'OE', 'OTW', 'PSS', 'RF', 'R4E', 'SHRI', 'TIK', 'ULCX', 'UTP', 'YOINK', 'PTT', 'YUS', 'SP', 'LUME', 'STC'
         ]
         other_api_trackers = [
             'ANT', 'BHDTV', 'NBL', 'RTF', 'SN', 'SPD', 'TL', 'TVC'
@@ -544,7 +546,7 @@ async def do_the_thing(base_dir):
             'FNP': FNP, 'FL': FL, 'HDB': HDB, 'HDT': HDT, 'HP': HP, 'HUNO': HUNO, 'JPTV': JPTV, 'LCD': LCD,
             'LST': LST, 'LT': LT, 'MTV': MTV, 'NBL': NBL, 'OE': OE, 'OTW': OTW, 'PSS': PSS, 'PTP': PTP, 'PTER': PTER,
             'R4E': R4E, 'RF': RF, 'RTF': RTF, 'SHRI': SHRI, 'SN': SN, 'SPD': SPD, 'THR': THR,
-            'TIK': TIK, 'TL': TL, 'TVC': TVC, 'TTG': TTG, 'ULCX': ULCX, 'UTP': UTP, 'YOINK': YOINK, 'YUS': YUS, 'SP': SP, 'PTT': PTT,
+            'TIK': TIK, 'TL': TL, 'TVC': TVC, 'TTG': TTG, 'ULCX': ULCX, 'UTP': UTP, 'YOINK': YOINK, 'YUS': YUS, 'SP': SP, 'PTT': PTT, 'LUME': LUME, 'STC': STC,
         }
 
         tracker_capabilities = {
