@@ -90,9 +90,9 @@ config = {
 
     "TRACKERS": {
         # Which trackers do you want to upload to?
-        # Available tracker: ACM, AITHER, AL, ANT, BHD, BHDTV, BLU, CBR, FNP, HDB, HDT, HP, HUNO, LCD, LST, LT, MTV, NBL, OE, OTW, PSS, PTER, PTP, PTT, R4E, RF, RTF, SN, STC, STT, THR, TIK, TL, ULCX, UTP, YOINK
+        # Available tracker: ACM, AITHER, AL, ANT, BHD, BHDTV, BLU, CBR, FNP, HDB, HDT, HP, HUNO, LCD, LST, LT, LUME, MTV, NBL, OE, OTW, PSS, PTER, PTP, PTT, R4E, RF, RTF, SN, STC, STT, THR, TIK, TL, ULCX, UTP, YOINK
         # Remove the trackers from the default_trackers list that are not used, to save being asked everytime
-        "default_trackers": "ACM, AITHER, AL, ANT, BHD, BHDTV, BLU, CBR, FNP, HDB, HDT, HP, HUNO, LCD, LST, LT, MTV, NBL, OE, OTW, PSS, PTER, PTP, PTT, R4E, RF, RTF, SN, THR, TIK, TL, ULCX, UTP, YOINK",
+        "default_trackers": "ACM, AITHER, AL, ANT, BHD, BHDTV, BLU, CBR, FNP, HDB, HDT, HP, HUNO, LCD, LST, LT, LUME, MTV, NBL, OE, OTW, PSS, PTER, PTP, PTT, R4E, RF, RTF, SN, STC, THR, TIK, TL, ULCX, UTP, YOINK",
 
         "ACM": {
             "api_key": "ACM api key",
@@ -204,6 +204,11 @@ config = {
             "announce_url": "https://lat-team.com/announce/customannounceurl",
             # "anon" : False
         },
+        "LUME": {
+            "api_key": "LUME api key",
+            "announce_url": "https://luminarr.me/announce/customannounceurl",
+            # "anon" : "False"
+        },
         "MTV": {
             'api_key': 'get from security page',
             'username': '<USERNAME>',
@@ -288,6 +293,11 @@ config = {
             "api_key": "SeedPool api key",
             "announce_url": "https://seedpool.org/announce/customannounceurl",
             # "anon" : False,
+        },
+        "STC": {
+            "api_key": "STC api key",
+            "announce_url": "https://skipthecommercials.xyz/announce/customannounceurl",
+            # "anon" : "False"
         },
         "THR": {
             "username": "username",
