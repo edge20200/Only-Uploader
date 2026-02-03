@@ -91,11 +91,19 @@ class STC():
             try:
                 response_json = response.json()
                 console.print(response_json)
-                # Download the .torrent file from the tracker after successful upload
-                if response.status_code in (200, 201) and 'data' in response_json:
-                    download_url = response_json['data']
-                    if download_url.startswith('http') and 'torrent/download' in download_url:
-                        await self.download_torrent_file(download_url, meta, self.tracker, self.config['TRACKERS'][self.tracker]['api_key'].strip())
+                
+                # 🔥 Download the torrent file after upload
+                if "data" in response_json and response_json["data"]:
+                    await common.add_tracker_torrent(
+                        meta,
+                        self.tracker,
+                        self.source_flag,
+                        self.config['TRACKERS'][self.tracker].get('announce_url'),
+                        "https://skipthecommercials.xyz/torrents/" + str(response_json["data"]),
+                        headers=headers,
+                        params=params,
+                        downurl=response_json["data"]
+                    )
             except Exception:
                 console.print("It may have uploaded, go check")
                 open_torrent.close()
@@ -104,32 +112,6 @@ class STC():
             console.print("[cyan]Request Data:")
             console.print(data)
         open_torrent.close()
-
-    async def download_torrent_file(self, download_url, meta, tracker_name, api_key):
-        """Download .torrent file from tracker after successful upload"""
-        try:
-            headers = {
-                'User-Agent': f'Upload Assistant/2.1 ({platform.system()} {platform.release()})',
-                'Authorization': f'Bearer {api_key}'
-            }
-            
-            response = requests.get(download_url, headers=headers, allow_redirects=True)
-            response.raise_for_status()
-            
-            # Save the downloaded .torrent file with STC-specific key
-            downloaded_torrent_path = f"{meta['base_dir']}/tmp/{meta['uuid']}/[{tracker_name}]{meta['clean_name']}_DOWNLOADED.torrent"
-            with open(downloaded_torrent_path, 'wb') as f:
-                f.write(response.content)
-            
-            console.print(f"[green]Downloaded .torrent file from tracker: {downloaded_torrent_path}")
-            
-            # Store in tracker-specific metadata to avoid conflicts with other trackers
-            if 'downloaded_torrents' not in meta:
-                meta['downloaded_torrents'] = {}
-            meta['downloaded_torrents'][tracker_name] = downloaded_torrent_path
-            
-        except Exception as e:
-            console.print(f"[red]Failed to download .torrent file from tracker: {e}")
 
     async def edit_name(self, meta):
         stc_name = meta.get('name')
