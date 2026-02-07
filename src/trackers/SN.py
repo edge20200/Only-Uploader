@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import requests
 import asyncio
+import sys
 
 from src.trackers.COMMON import COMMON
 from src.console import console
@@ -21,7 +22,11 @@ class SN():
         self.upload_url = 'https://swarmazon.club/api/upload.php'
         self.forum_link = 'https://swarmazon.club/php/forum.php?forum_page=2-swarmazon-rules'
         self.search_url = 'https://swarmazon.club/api/search.php'
-        self.banned_groups = [""]
+        self.banned_groups = [
+            '4K4U', 'AROMA', 'aXXo', 'BRrip', 'CM8', 'CrEwSaDe', 'DNL', 'FaNGDiNG0', 'FRDS', 'HD2DVD', 'HDTime', 'iPlanet', 'KiNGDOM', 'Leffe', 'MeGusta', 
+            'mHD', 'mSD', 'nHD', 'nSD', 'NeXus', 'NhaNc3', 'PRODJi', 'TSP', 'RDN', 'SANTi', 'STUTTERSHIT', 'RARBG', 'ViSION', 'WAF', 'x0r', 'YIFY', 'LycanHD', 
+            'Leffe', 'FGT', 'LAMA'
+        ]
         pass
 
     async def get_type_id(self, type):
@@ -87,23 +92,25 @@ class SN():
 
         }
 
+        # Post request with error messages returned:
         if meta['debug'] is False:
             response = requests.request("POST", url=self.upload_url, data=data, files=files)
-
-            try:
-                if response.json().get('success'):
-                    console.print(response.json())
-                else:
-                    console.print("[red]Did not upload successfully")
-                    console.print(response.json())
-            except Exception:
-                console.print("[red]Error! It may have uploaded, go check")
-                console.print(data)
-                console.print_exception()
-                return
-        else:
-            console.print("[cyan]Request Data:")
-            console.print(data)
+    
+        # Check if the response is actually JSON before parsing
+            if response.status_code == 200 and 'application/json' in response.headers.get('Content-Type', ''):
+                try:
+                    resp_data = response.json()
+                    if resp_data.get('success'):
+                        console.print(resp_data)
+                    else:
+                        console.print("[red]Did not upload successfully")
+                        console.print(resp_data)
+                        sys.exit(1) # Stop the script
+                except Exception:
+                    console.print("[red]JSON parsing failed despite correct headers.")
+            else:
+                console.print(f"[red]Server returned non-JSON response (Status: {response.status_code})")
+                console.print(f"Raw Response: {response.text[:500]}") # Print first 500 chars to see the error
 
     async def edit_desc(self, meta):
         base = open(f"{meta['base_dir']}/tmp/{meta['uuid']}/DESCRIPTION.txt", 'r', encoding='utf-8').read()
@@ -145,13 +152,25 @@ class SN():
                 params['filter'] = meta['resolution']
 
         try:
-            response = requests.get(url=self.search_url, params=params)
-            response = response.json()
-            for i in response['data']:
-                result = i['name']
-                dupes.append(result)
-        except Exception:
-            console.print('[red]Unable to search for existing torrents on site. Either the site is down or your API key is incorrect')
-            await asyncio.sleep(5)
+            # Standard GET request to the search API
+            response = requests.get(url=self.search_url, params=params, timeout=10)
+        
+            # Defensive check: Ensure the response is actually JSON before parsing
+            if response.status_code == 200 and 'application/json' in response.headers.get('Content-Type', ''):
+                response_json = response.json()
+                # Verify 'data' exists in the response to avoid KeyErrors
+                for i in response_json.get('data', []):
+                    result = i.get('name')
+                    if result:
+                        dupes.append(result)
+            else:
+                console.print(f'[red]Search failed. Server returned Status {response.status_code}')
+                if not response.text:
+                    console.print('[red]Reason: Empty response from server.')
+                else:
+                    console.print(f'[red]Reason: Received HTML or malformed data instead of JSON.')
 
+        except Exception as e:
+            console.print(f'[red]Unexpected error during search: {e}')
+            await asyncio.sleep(5)
         return dupes
