@@ -145,6 +145,11 @@ config = {
             "announce_url": "https://capybarabr.com/announce/customannounceurl",
             # "anon" : False
         },
+        "DP": {
+            "api_key": "DarkPeers api key",
+            "announce_url": "https://darkpeers.org/announce/customannounceurl",
+            # "anon" : False
+        },
         "FL": {
             "username": "FL username",
             "passkey": "FL passkey",
@@ -170,6 +175,11 @@ config = {
             "my_announce_url": "https://hdts-announce.ru/announce.php?pid=<PASS_KEY/PID>",
             # "anon" : "False"
             "announce_url": "https://hdts-announce.ru/announce.php",  # DO NOT EDIT THIS LINE
+        },
+        "HHD": {
+            "api_key": "HHD api key",
+            "announce_url": "https://homiehelpdesk.net/announce/customannounceurl",
+            # "anon" : False
         },
         "HP": {
             "api_key": "HP",
