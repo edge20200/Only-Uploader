@@ -26,8 +26,8 @@ class RF():
         self.config = config
         self.tracker = 'RF'
         self.source_flag = 'ReelFliX'
-        self.upload_url = 'https://reelflix.xyz/api/torrents/upload'
-        self.search_url = 'https://reelflix.xyz/api/torrents/filter'
+        self.upload_url = 'https://reelflix.cc/api/torrents/upload'
+        self.search_url = 'https://reelflix.cc/api/torrents/filter'
         self.signature = "\n[center][url=https://github.com/edge20200/Only-Uploader]Powered by Only-Uploader[/url][/center]"
         self.banned_groups = [""]
         pass
@@ -116,7 +116,7 @@ class RF():
                         self.tracker,
                         self.source_flag,
                         self.config['TRACKERS'][self.tracker].get('announce_url'),
-                        "https://reelflix.xyz/torrents/" + str(resp_json["data"]),
+                        "https://reelflix.cc/torrents/" + str(resp_json["data"]),
                         headers=headers,
                         params=params,
                         downurl=resp_json["data"]
