@@ -31,12 +31,54 @@ class HHD:
         self.torrent_url = "https://homiehelpdesk.net/torrents/"
         self.signature = "\n[center][url=https://github.com/edge20200/Only-Uploader]Powered by Only-Uploader[/url][/center]"
         self.banned_groups = [
-            "aXXo", "BONE", "BRrip", "CM8", "CrEwSaDe", "CTFOH", "dAV1nci", "d3g",
-            "DNL", "FaNGDiNG0", "GalaxyTV", "HD2DVD", "HDTime", "iHYTECH", "ION10", "iPlanet",
-            "KiNGDOM", "LAMA", "MeGusta", "mHD", "mSD", "NaNi", "NhaNc3", "nHD",
-            "nikt0", "nSD", "OFT", "PRODJi", "RARBG", "Rifftrax", "SANTi", "SasukeducK",
-            "ShAaNiG", "Sicario", "STUTTERSHIT", "TGALAXY", "TORRENTGALAXY", "TSP", "TSPxL", "ViSION",
-            "VXT", "WAF", "WKS", "x0r", "YAWNiX", "YIFY", "YTS", "PSA",
+            "aXXo",
+            "BONE",
+            "BRrip",
+            "CM8",
+            "CrEwSaDe",
+            "CTFOH",
+            "dAV1nci",
+            "d3g",
+            "DNL",
+            "FaNGDiNG0",
+            "GalaxyTV",
+            "HD2DVD",
+            "HDTime",
+            "iHYTECH",
+            "ION10",
+            "iPlanet",
+            "KiNGDOM",
+            "LAMA",
+            "MeGusta",
+            "mHD",
+            "mSD",
+            "NaNi",
+            "NhaNc3",
+            "nHD",
+            "nikt0",
+            "nSD",
+            "OFT",
+            "PRODJi",
+            "RARBG",
+            "Rifftrax",
+            "SANTi",
+            "SasukeducK",
+            "ShAaNiG",
+            "Sicario",
+            "STUTTERSHIT",
+            "TGALAXY",
+            "TORRENTGALAXY",
+            "TSP",
+            "TSPxL",
+            "ViSION",
+            "VXT",
+            "WAF",
+            "WKS",
+            "x0r",
+            "YAWNiX",
+            "YIFY",
+            "YTS",
+            "PSA",
         ]
         pass
 
@@ -185,7 +227,7 @@ class HHD:
         return 1 if meta.get(flag_name, False) else 0
 
     async def edit_name(self, meta):
-        aither_name = meta["name"]
+        hhd_name = meta["name"]
         media_info_tracks = meta.get("media_info_tracks", [])  # noqa #F841
         resolution = meta.get("resolution")
         video_codec = meta.get("video_codec")
@@ -195,17 +237,15 @@ class HHD:
 
         if name_type == "DVDRIP":
             if meta.get("category") == "MOVIE":
-                aither_name = aither_name.replace(
+                hhd_name = hhd_name.replace(
                     f"{meta['source']}{meta['video_encode']}", f"{resolution}", 1
                 )
-                aither_name = aither_name.replace(
+                hhd_name = hhd_name.replace(
                     (meta["audio"]), f"{meta['audio']} {video_encode}", 1
                 )
             else:
-                aither_name = aither_name.replace(
-                    f"{meta['source']}", f"{resolution}", 1
-                )
-                aither_name = aither_name.replace(
+                hhd_name = hhd_name.replace(f"{meta['source']}", f"{resolution}", 1)
+                hhd_name = hhd_name.replace(
                     f"{meta['video_codec']}",
                     f"{meta['audio']} {meta['video_codec']}",
                     1,
@@ -246,11 +286,11 @@ class HHD:
                             "NTSC DVD",
                             "DVD",
                         ):
-                            aither_name = aither_name.replace(
+                            hhd_name = hhd_name.replace(
                                 str(meta["year"]), f"{meta['year']} {audio_lang}", 1
                             )
                         else:
-                            aither_name = aither_name.replace(
+                            hhd_name = hhd_name.replace(
                                 meta["resolution"],
                                 f"{audio_lang} {meta['resolution']}",
                                 1,
@@ -261,10 +301,10 @@ class HHD:
         if meta["is_disc"] == "DVD" or (
             name_type == "REMUX" and source in ("PAL DVD", "NTSC DVD", "DVD")
         ):
-            aither_name = aither_name.replace(
+            hhd_name = hhd_name.replace(
                 (meta["source"]), f"{resolution} {meta['source']}", 1
             )
-            aither_name = aither_name.replace(
+            hhd_name = hhd_name.replace(
                 (meta["audio"]), f"{video_codec} {meta['audio']}", 1
             )
 
@@ -274,11 +314,11 @@ class HHD:
             and meta.get("episode_title_storage", "").strip() != ""
             and meta["episode"].strip() != ""
         ):
-            aither_name = aither_name.replace(
+            hhd_name = hhd_name.replace(
                 meta["episode"], f"{meta['episode']} {meta['episode_title_storage']}", 1
             )
 
-        return aither_name
+        return hhd_name
 
     async def get_cat_id(self, category_name):
         category_id = {
