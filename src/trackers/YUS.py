@@ -202,105 +202,103 @@ class YUS:
 
         return 1 if meta.get(flag_name, False) else 0
 
-        async def edit_name(self, meta):
-            yus_name = meta["name"]
-            media_info_tracks = meta.get("media_info_tracks", [])  # noqa #F841
-            resolution = meta.get("resolution")
-            video_codec = meta.get("video_codec")
-            video_encode = meta.get("video_encode")
-            name_type = meta.get("type", "")
-            source = meta.get("source", "")
+    async def edit_name(self, meta):
+        yus_name = meta["name"]
+        media_info_tracks = meta.get("media_info_tracks", [])  # noqa #F841
+        resolution = meta.get("resolution")
+        video_codec = meta.get("video_codec")
+        video_encode = meta.get("video_encode")
+        name_type = meta.get("type", "")
+        source = meta.get("source", "")
 
-            if name_type == "DVDRIP":
-                if meta.get("category") == "MOVIE":
-                    yus_name = yus_name.replace(
-                        f"{meta['source']}{meta['video_encode']}", f"{resolution}", 1
-                    )
-                    yus_name = yus_name.replace(
-                        (meta["audio"]), f"{meta['audio']} {video_encode}", 1
-                    )
-                else:
-                    yus_name = yus_name.replace(f"{meta['source']}", f"{resolution}", 1)
-                    yus_name = yus_name.replace(
-                        f"{meta['video_codec']}",
-                        f"{meta['audio']} {meta['video_codec']}",
-                        1,
-                    )
-
-            if not meta["is_disc"]:
-
-                def has_english_audio(tracks=None, media_info_text=None):
-                    if media_info_text:
-                        audio_section = re.findall(
-                            r"Audio[\s\S]+?Language\s+:\s+(\w+)", media_info_text
-                        )
-                        for i, language in enumerate(audio_section):
-                            language = language.lower().strip()
-                            if language.lower().startswith(
-                                "en"
-                            ):  # Check if it's English
-                                return True
-                    return False
-
-                def get_audio_lang(tracks=None, is_bdmv=False, media_info_text=None):
-                    if media_info_text:
-                        match = re.search(
-                            r"Audio[\s\S]+?Language\s+:\s+(\w+)", media_info_text
-                        )
-                        if match:
-                            return match.group(1).upper()
-                    return ""
-
-                try:
-                    media_info_path = (
-                        f"{meta['base_dir']}/tmp/{meta['uuid']}/MEDIAINFO.txt"
-                    )
-                    with open(media_info_path, "r", encoding="utf-8") as f:
-                        media_info_text = f.read()
-
-                    if not has_english_audio(media_info_text=media_info_text):
-                        audio_lang = get_audio_lang(media_info_text=media_info_text)
-                        if audio_lang:
-                            if name_type == "REMUX" and source in (
-                                "PAL DVD",
-                                "NTSC DVD",
-                                "DVD",
-                            ):
-                                yus_name = yus_name.replace(
-                                    str(meta["year"]), f"{meta['year']} {audio_lang}", 1
-                                )
-                            else:
-                                yus_name = yus_name.replace(
-                                    meta["resolution"],
-                                    f"{audio_lang} {meta['resolution']}",
-                                    1,
-                                )
-                except (FileNotFoundError, KeyError) as e:
-                    print(f"Error processing MEDIAINFO.txt: {e}")
-
-            if meta["is_disc"] == "DVD" or (
-                name_type == "REMUX" and source in ("PAL DVD", "NTSC DVD", "DVD")
-            ):
+        if name_type == "DVDRIP":
+            if meta.get("category") == "MOVIE":
                 yus_name = yus_name.replace(
-                    (meta["source"]), f"{resolution} {meta['source']}", 1
+                    f"{meta['source']}{meta['video_encode']}", f"{resolution}", 1
                 )
                 yus_name = yus_name.replace(
-                    (meta["audio"]), f"{video_codec} {meta['audio']}", 1
+                    (meta["audio"]), f"{meta['audio']} {video_encode}", 1
                 )
-
-            if (
-                meta["category"] == "TV"
-                and meta.get("tv_pack", 0) == 0
-                and meta.get("episode_title_storage", "").strip() != ""
-                and meta["episode"].strip() != ""
-            ):
+            else:
+                yus_name = yus_name.replace(f"{meta['source']}", f"{resolution}", 1)
                 yus_name = yus_name.replace(
-                    meta["episode"],
-                    f"{meta['episode']} {meta['episode_title_storage']}",
+                    f"{meta['video_codec']}",
+                    f"{meta['audio']} {meta['video_codec']}",
                     1,
                 )
 
-            return yus_name
+        if not meta["is_disc"]:
+
+            def has_english_audio(tracks=None, media_info_text=None):
+                if media_info_text:
+                    audio_section = re.findall(
+                        r"Audio[\s\S]+?Language\s+:\s+(\w+)", media_info_text
+                    )
+                    for i, language in enumerate(audio_section):
+                        language = language.lower().strip()
+                        if language.lower().startswith("en"):  # Check if it's English
+                            return True
+                return False
+
+            def get_audio_lang(tracks=None, is_bdmv=False, media_info_text=None):
+                if media_info_text:
+                    match = re.search(
+                        r"Audio[\s\S]+?Language\s+:\s+(\w+)", media_info_text
+                    )
+                    if match:
+                        return match.group(1).upper()
+                return ""
+
+            try:
+                media_info_path = (
+                    f"{meta['base_dir']}/tmp/{meta['uuid']}/MEDIAINFO.txt"
+                )
+                with open(media_info_path, "r", encoding="utf-8") as f:
+                    media_info_text = f.read()
+
+                if not has_english_audio(media_info_text=media_info_text):
+                    audio_lang = get_audio_lang(media_info_text=media_info_text)
+                    if audio_lang:
+                        if name_type == "REMUX" and source in (
+                            "PAL DVD",
+                            "NTSC DVD",
+                            "DVD",
+                        ):
+                            yus_name = yus_name.replace(
+                                str(meta["year"]), f"{meta['year']} {audio_lang}", 1
+                            )
+                        else:
+                            yus_name = yus_name.replace(
+                                meta["resolution"],
+                                f"{audio_lang} {meta['resolution']}",
+                                1,
+                            )
+            except (FileNotFoundError, KeyError) as e:
+                print(f"Error processing MEDIAINFO.txt: {e}")
+
+        if meta["is_disc"] == "DVD" or (
+            name_type == "REMUX" and source in ("PAL DVD", "NTSC DVD", "DVD")
+        ):
+            yus_name = yus_name.replace(
+                (meta["source"]), f"{resolution} {meta['source']}", 1
+            )
+            yus_name = yus_name.replace(
+                (meta["audio"]), f"{video_codec} {meta['audio']}", 1
+            )
+
+        if (
+            meta["category"] == "TV"
+            and meta.get("tv_pack", 0) == 0
+            and meta.get("episode_title_storage", "").strip() != ""
+            and meta["episode"].strip() != ""
+        ):
+            yus_name = yus_name.replace(
+                meta["episode"],
+                f"{meta['episode']} {meta['episode_title_storage']}",
+                1,
+            )
+
+        return yus_name
 
     async def get_cat_id(self, category_name):
         category_id = {
