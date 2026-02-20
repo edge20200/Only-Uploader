@@ -288,35 +288,6 @@ class YUS:
                 (meta["audio"]), f"{video_codec} {meta['audio']}", 1
             )
 
-        if (
-            meta["category"] == "TV"
-            and meta.get("tv_pack", 0) == 0
-            and meta.get("episode_title_storage", "").strip() != ""
-            and meta["episode"].strip() != ""
-        ):
-            # Filter out directory-related terms that shouldn't be in episode titles
-            episode_title = meta["episode_title_storage"]
-            excluded_terms = [
-                "uploading", "queued", "to-upload", "downloading", 
-                "processing", "complete", "finished", "temp", 
-                "_queued", "_uploading", "to-upload", "upload"
-            ]
-            
-            # Check if the episode title contains any excluded terms
-            episode_title_lower = episode_title.lower()
-            should_skip = any(term.lower() in episode_title_lower for term in excluded_terms)
-            
-            # Also check if the episode title looks like a date (YYYY.MM.DD format)
-            # which is valid for daily shows and should be included
-            is_date = re.match(r"\d{4}[-.]\d{2}[-.]\d{2}", episode_title) is not None
-            
-            if not should_skip or is_date:
-                yus_name = yus_name.replace(
-                    meta["episode"],
-                    f"{meta['episode']} {episode_title}",
-                    1,
-                )
-
         return yus_name
 
     async def get_cat_id(self, category_name):
