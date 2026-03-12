@@ -36,7 +36,13 @@ class BLU():
             ['EVO', 'Raw Content Only'], ['TERMiNAL', 'Raw Content Only'], ['ViSION', 'Note the capitalization and characters used'], ['CMRG', 'Raw Content Only']
         ]
 
-        pass
+    def get_headers(self):
+        """Return headers with Bearer token authorization for UNIT3D API"""
+        return {
+            'User-Agent': f'Upload Assistant/2.2 ({platform.system()} {platform.release()})',
+            'Authorization': f'Bearer {self.config["TRACKERS"][self.tracker]["api_key"].strip()}',
+            'Accept': 'application/json'
+        }
 
     async def upload(self, meta, disctype):
         common = COMMON(config=self.config)
@@ -116,12 +122,8 @@ class BLU():
         if meta.get('category') == "TV":
             data['season_number'] = meta.get('season_int', '0')
             data['episode_number'] = meta.get('episode_int', '0')
-        headers = {
-            'User-Agent': f'Upload Assistant/2.2 ({platform.system()} {platform.release()})'
-        }
-        params = {
-            'api_token': self.config['TRACKERS'][self.tracker]['api_key'].strip()
-        }
+        headers = self.get_headers()
+        params = {}
 
         if meta['debug'] is False:
             response = requests.post(url=self.upload_url, files=files, data=data, headers=headers, params=params)
@@ -224,19 +226,19 @@ class BLU():
         dupes = []
         console.print("[yellow]Searching for existing torrents on site...")
         params = {
-            'api_token': self.config['TRACKERS'][self.tracker]['api_key'].strip(),
             'tmdbId': meta['tmdb'],
             'categories[]': await self.get_cat_id(meta['category'], meta.get('edition', '')),
             'types[]': await self.get_type_id(meta['type']),
             'resolutions[]': await self.get_res_id(meta['resolution']),
             'name': ""
         }
+        headers = self.get_headers()
         if meta['category'] == 'TV':
             params['name'] = params['name'] + f" {meta.get('season', '')}{meta.get('episode', '')}"
         if meta.get('edition', "") != "":
             params['name'] = params['name'] + f" {meta['edition']}"
         try:
-            response = requests.get(url=self.search_url, params=params)
+            response = requests.get(url=self.search_url, params=params, headers=headers)
             response = response.json()
             for each in response['data']:
                 result = [each][0]['attributes']['name']
@@ -255,12 +257,12 @@ class BLU():
         quoted_name = f'"{Name}"'
 
         params = {
-            'api_token': self.config['TRACKERS'][self.tracker]['api_key'].strip(),
             'name': quoted_name
         }
+        headers = self.get_headers()
 
         try:
-            response = requests.get(url=self.search_url, params=params)
+            response = requests.get(url=self.search_url, params=params, headers=headers)
             response.raise_for_status()
             response_data = response.json()
 
