@@ -117,14 +117,37 @@ class HUNO():
             else:
                 console.print(f"[yellow]Warning: Source MediaInfo file not found: {source_mi_path}[/yellow]")
         
-        # Prepare data payload with mandatory fields (AUTO MODE handles parsing)
+        # Generate name for the upload
+        name = await self.get_name(meta)
+        
+        # Prepare data payload with mandatory fields
         data = {
             'category_id': category_id,
             'type_id': type_id,
+            'name': name,
+            'tmdb': meta.get('tmdb', ''),
             'anonymous': anonymous,
             'internal': internal,
             'stream_friendly': stream_friendly,
         }
+        
+        # Add IMDb ID if available
+        if meta.get('imdb_id'):
+            data['imdb'] = meta['imdb_id'].replace('tt', '')
+        
+        # Add TVDB ID if available
+        if meta.get('tvdb_id'):
+            data['tvdb'] = str(meta['tvdb_id'])
+        
+        # TV-specific fields
+        if meta['category'] == 'TV':
+            if meta.get('season'):
+                data['season_number'] = str(meta.get('season'))
+            
+            if meta.get('tv_pack') == 1:
+                data['season_pack'] = '1'
+            elif meta.get('episode') and meta['episode'] != 0:
+                data['episode_number'] = str(meta['episode'])
         
         # Headers (Note: Don't set Content-Type manually for multipart/form-data, requests handles it)
         headers = {
