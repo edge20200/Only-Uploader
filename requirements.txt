@@ -10,6 +10,7 @@ deluge-client
 pyrobase
 requests
 cinemagoer
+imdbinfo
 pyimgbox
 nest_asyncio
 bencode.py
