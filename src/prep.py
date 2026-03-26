@@ -45,7 +45,7 @@ try:
     import time
     import anitopy
     import shutil
-    from imdb import Cinemagoer
+    from imdbinfo import get_movie, search_title
     import itertools
     import cli_ui
     from rich.progress import Progress, TextColumn, BarColumn, TimeRemainingColumn  # noqa F401
@@ -4015,19 +4015,34 @@ class Prep():
     async def get_imdb_aka(self, imdb_id):
         if imdb_id == "0":
             return "", None
-        ia = Cinemagoer()
-        result = ia.get_movie(imdb_id.replace('tt', ''))
-
-        original_language = result.get('language codes')
-        if isinstance(original_language, list):
-            if len(original_language) > 1:
-                original_language = None
-            elif len(original_language) == 1:
-                original_language = original_language[0]
-        aka = result.get('original title', result.get('localized title', "")).replace(' - IMDb', '').replace('\u00ae', '')
-        if aka != "":
-            aka = f" AKA {aka}"
-        return aka, original_language
+        try:
+            # Get movie details using imdbinfo
+            movie = get_movie(imdb_id)
+            
+            if not movie:
+                return "", None
+            
+            # Get original language - use safe attribute access
+            # Try different possible attribute names
+            original_language = None
+            if hasattr(movie, 'primary_language'):
+                original_language = movie.primary_language
+                if isinstance(original_language, list):
+                    original_language = original_language[0] if len(original_language) >= 1 else None
+                else:
+                    original_language = None
+            
+            # Get AKA title - use title as fallback
+            aka = movie.title if movie.title else ""
+            if aka and aka != movie.title:
+                aka = f" AKA {aka}"
+            else:
+                aka = ""
+                
+            return aka, original_language
+        except Exception as e:
+            console.print(f"[yellow]IMDB: Error getting AKA for {imdb_id}: {str(e)}[/yellow]")
+            return "", None
 
     async def get_dvd_size(self, discs, manual_dvds):
         sizes = []
@@ -4085,55 +4100,88 @@ class Prep():
     async def get_imdb_info(self, imdbID, meta):
         imdb_info = {}
         if int(str(imdbID).replace('tt', '')) != 0:
-            ia = Cinemagoer()
-            info = ia.get_movie(imdbID)
-            imdb_info['title'] = info.get('title')
-            imdb_info['year'] = info.get('year')
-            imdb_info['aka'] = (info.get('original title')
-                    or info.get('localized title')
-                    or imdb_info['title']
-                    or '').replace(' - IMDb', '')
-            imdb_info['type'] = info.get('kind')
-            imdb_info['imdbID'] = info.get('imdbID')
-            imdb_info['runtime'] = info.get('runtimes', ['0'])[0]
-            imdb_info['cover'] = info.get('full-size cover url', '').replace(".jpg", "._V1_FMjpg_UX750_.jpg")
-            imdb_info['plot'] = info.get('plot', [''])[0]
-            imdb_info['genres'] = ', '.join(info.get('genres', ''))
-            imdb_info['rating'] = info.get('rating', 'N/A')
-            imdb_info['original_language'] = info.get('language codes')
-            if isinstance(imdb_info['original_language'], list):
-                if len(imdb_info['original_language']) > 1:
-                    imdb_info['original_language'] = None
-                elif len(imdb_info['original_language']) == 1:
-                    imdb_info['original_language'] = imdb_info['original_language'][0]
-            if imdb_info['cover'] == '':
-                imdb_info['cover'] = meta.get('poster', '')
-            if len(info.get('directors', [])) >= 1:
-                imdb_info['directors'] = []
-                for director in info.get('directors'):
-                    imdb_info['directors'].append(f"nm{director.getID()}")
+            try:
+                # imdbinfo accepts both "tt0133093" and "0133093" formats
+                movie = get_movie(imdbID)
+                
+                if not movie or not hasattr(movie, 'title'):
+                    console.print(f"[yellow]IMDB: Could not retrieve movie data for IMDB ID: {imdbID}[/yellow]")
+                    return imdb_info
+                
+                imdb_info['title'] = movie.title
+                imdb_info['year'] = movie.year
+                imdb_info['aka'] = (movie.title_localized 
+                        or movie.title 
+                        or '').replace(' - IMDb', '')
+                imdb_info['type'] = movie.kind
+                imdb_info['imdbID'] = movie.imdb_id
+                imdb_info['runtime'] = str(movie.duration // 60) if movie.duration else '0'
+                imdb_info['cover'] = movie.poster_image or meta.get('poster', '')
+                imdb_info['plot'] = movie.plot_outline or movie.plot or ''
+                imdb_info['genres'] = ', '.join([g for g in movie.genres]) if movie.genres else ''
+                imdb_info['rating'] = str(movie.rating) if movie.rating else 'N/A'
+                imdb_info['original_language'] = None
+                
+                # Try to get original language - handle different structures
+                if hasattr(movie, 'original_language'):
+                    orig_lang = movie.original_language
+                    if isinstance(orig_lang, list):
+                        imdb_info['original_language'] = orig_lang[0] if len(orig_lang) >= 1 else None
+                    elif isinstance(orig_lang, str):
+                        imdb_info['original_language'] = orig_lang
+                    else:
+                        imdb_info['original_language'] = None
+                
+                # Try to get directors - handle different structures
+                if hasattr(movie, 'principal_credits'):
+                    imdb_info['directors'] = []
+                    for credit in movie.principal_credits:
+                        if hasattr(credit, 'category') and credit.category == 'director':
+                            if hasattr(credit, 'credits') and isinstance(credit.credits, list):
+                                for person in credit.credits:
+                                    if hasattr(person, 'name'):
+                                        imdb_info['directors'].append(person.name)
+                                
+            except Exception as e:
+                console.print(f"[yellow]IMDB: Error fetching data for IMDB ID {imdbID}: {str(e)}[/yellow]")
         else:
             imdb_info = {
                 'title': meta['title'],
                 'year': meta['year'],
                 'aka': '',
-                'type': None,
+                'type': meta.get('type', None),  # FIXED: Use meta type if available
                 'runtime': meta.get('runtime', '60'),
                 'cover': meta.get('poster'),
             }
             if len(meta.get('tmdb_directors', [])) >= 1:
                 imdb_info['directors'] = meta['tmdb_directors']
-
+    
         return imdb_info
 
     async def search_imdb(self, filename, search_year):
         imdbID = '0'
-        ia = Cinemagoer()
-        search = ia.search_movie(filename)
-        for movie in search:
-            if filename in movie.get('title', ''):
-                if movie.get('year') == search_year:
-                    imdbID = str(movie.movieID).replace('tt', '')
+        try:
+            # Search for titles matching the filename
+            results = search_title(filename)
+            
+            if results and hasattr(results, 'titles'):
+                # Find the best match
+                for movie in results.titles:
+                    # Check if filename is in title or if title is in filename
+                    if hasattr(movie, 'title') and hasattr(movie, 'imdb_id'):
+                        if filename.lower() in movie.title.lower() or movie.title.lower() in filename.lower():
+                            # Prefer exact year match, but allow close matches
+                            if hasattr(movie, 'year') and movie.year == search_year:
+                                imdbID = movie.imdb_id.replace('tt', '')
+                                console.print(f"[green]Found exact match: {movie.title} ({movie.year}) - ID: {movie.imdb_id}[/green]")
+                                break
+                            # If no exact match found yet, use this one
+                            elif imdbID == '0':
+                                imdbID = movie.imdb_id.replace('tt', '')
+                                console.print(f"[yellow]Found partial match: {movie.title} ({movie.year}) - ID: {movie.imdb_id}[/yellow]")
+        except Exception as e:
+            console.print(f"[yellow]IMDB: Error searching for {filename}: {str(e)}[/yellow]")
+        
         return imdbID
 
     async def imdb_other_meta(self, meta):
