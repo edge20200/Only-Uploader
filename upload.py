@@ -50,6 +50,7 @@ from src.trackers.LUME import LUME
 from src.trackers.STC import STC
 from src.trackers.HHD import HHD
 from src.trackers.DP import DP
+from src.trackers.MS import MS
 import json
 from pathlib import Path
 import asyncio
@@ -535,7 +536,7 @@ async def do_the_thing(base_dir):
         common = COMMON(config=config)
         api_trackers = [
             'ACM', 'AITHER', 'AL', 'BHD', 'BLU', 'CBR', 'FNP', 'HUNO', 'JPTV', 'LCD', 'LST', 'LT',
-            'OE', 'OTW', 'PSS', 'RF', 'R4E', 'SHRI', 'TIK', 'ULCX', 'UTP', 'YOINK', 'PTT', 'YUS', 'SP', 'LUME', 'STC', 'HHD', 'DP'
+            'OE', 'OTW', 'PSS', 'RF', 'R4E', 'SHRI', 'TIK', 'ULCX', 'UTP', 'YOINK', 'PTT', 'YUS', 'SP', 'LUME', 'STC', 'HHD', 'DP', 'MS'
         ]
         other_api_trackers = [
             'ANT', 'BHDTV', 'NBL', 'RTF', 'SN', 'SPD', 'TL', 'TVC'
@@ -549,14 +550,15 @@ async def do_the_thing(base_dir):
             'LST': LST, 'LT': LT, 'MTV': MTV, 'NBL': NBL, 'OE': OE, 'OTW': OTW, 'PSS': PSS, 'PTP': PTP, 'PTER': PTER,
             'R4E': R4E, 'RF': RF, 'RTF': RTF, 'SHRI': SHRI, 'SN': SN, 'SPD': SPD, 'THR': THR,
             'TIK': TIK, 'TL': TL, 'TVC': TVC, 'TTG': TTG, 'ULCX': ULCX, 'UTP': UTP, 'YOINK': YOINK, 'YUS': YUS, 'SP': SP, 'PTT': PTT, 'LUME': LUME, 'STC': STC,
-            'HHD': HHD, 'DP': DP,
+            'HHD': HHD, 'DP': DP, 'MS': MS,
         }
 
         tracker_capabilities = {
             'AITHER': {'mod_q': True, 'draft': False},
             'BHD': {'draft_live': True},
             'BLU': {'mod_q': True, 'draft': False},
-            'LST': {'mod_q': True, 'draft': True}
+            'LST': {'mod_q': True, 'draft': True},
+            'OE': {'mod_q': True, 'draft': False}
         }
 
         async def check_mod_q_and_draft(tracker_class, meta, debug, disctype):
