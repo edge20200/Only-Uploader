@@ -1,18 +1,15 @@
 config = {
     "DEFAULT": {
-
         # ------ READ THIS ------
         # Any lines starting with the # symbol are commented and will not be used.
         # If you change any of these options, remove the #
         # -----------------------
-
         "tmdb_api": "tmdb_api key",
         "imgbb_api": "imgbb api key",
         "ptpimg_api": "ptpimg api key",
         "lensdump_api": "lensdump api key",
         "ptscreens_api": "ptscreens api key",
         "onlyimage_api": "onlyimage api key",
-
         # Order of image hosts, and backup image hosts
         "img_host_1": "onlyimage",
         "img_host_2": "imgbb",
@@ -21,35 +18,27 @@ config = {
         "img_host_5": "pixhost",
         "img_host_6": "lensdump",
         "img_host_7": "ptscreens",
-
         # Number of screenshots to capture
         "screens": "6",
-
         # Number of cutoff screenshots
         # If there are at least this many screenshots already, perhaps pulled from existing
         # description, skip creating and uploading any further screenshots.
         "cutoff_screens": "3",
-
         # multi processing task limit
         # When capturing/optimizing images, limit to this many concurrent tasks
         # defaults to 'os.cpu_count()'
         "task_limit": "1",
-
         # Providing the option to change the size of the screenshot thumbnails where supported.
         # Default is 350, ie [img=350]
         "thumbnail_size": "350",
-
         # Number of screenshots to use for each (ALL) disc/episode when uploading packs to supported sites.
         # 0 equals old behavior where only the original description and images are added.
         # This setting also effect PTP, however PTP requries at least 2 images for each.
         # PTP will always use a *minimum* of 2, regardless of what is set here.
         "multiScreens": "0",
-
         # The below options for packed content do not effect PTP. PTP has a set standard.
-
         # When uploading packs, you can specifiy a different screenshot thumbnail size, default 350.
         "pack_thumb_size": "350",
-
         # Description character count (including bbcode) cutoff for UNIT3D sites when **season packs only**.
         # After hitting this limit, only filenames and screenshots will be used for any ADDITIONAL files
         # still to be added to the description. You can set this small like 50, to only ever
@@ -58,47 +47,35 @@ config = {
         # worked fine in a forum post at BLU. If the description is at 1 < charLimit, the next full
         # description will be added before respecting this cutoff.
         "charLimit": "14000",
-
         # How many files in a season pack will be added to the description before using an additional spoiler tag.
         # Any other files past this limit will be hidden/added all within a spoiler tag.
         "fileLimit": "0",
-
         # Absolute limit on processed files in packs. You might not want to upload images for a large number of episodes
         "processLimit": "10",
-
         # Providing the option to add a header, in bbcode, above the screenshot section where supported
         # "screenshot_header": "[center] SCREENSHOTS [/center]",
-
         # Enable lossless PNG Compression (True/False)
         "optimize_images": True,
-
         # Use only half available CPU cores to avoid memory allocation errors
         # Only when using lossless compression
         "shared_seedbox": False,
-
         # The name of your default torrent client, set in the torrent client sections below
         "default_torrent_client": "Client1",
-
         # Play the bell sound effect when asking for confirmation
         "sfx_on_prompt": True,
-
         # Run an API search after upload to find the permalink and insert as comment in torrent
         # Needs a 5 second wait to ensure the API is updated
         "get_permalink": False,
-
     },
-
     "TRACKERS": {
         # Which trackers do you want to upload to?
-        # Available tracker: ACM, AITHER, AL, ANT, BHD, BHDTV, BLU, CBR, FNP, HDB, HDT, HP, HUNO, LCD, LST, LT, LUME, MTV, NBL, OE, OTW, PSS, PTER, PTP, PTT, R4E, RF, RTF, SN, STC, STT, THR, TIK, TL, ULCX, UTP, YOINK
+        # Available tracker: ACM, AITHER, AL, ANT, BHD, BHDTV, BLU, CBR, DP, FNP, HDB, HDT, HHD, HP, HUNO, LCD, LST, LT, LUME, MTV, MS, NBL, OE, OTW, PSS, PTER, PTP, PTT, R4E, RF, RTF, SN, SPD, SP, STC, THR, TIK, TL, ULCX, UTP, YOINK, YUS
         # Remove the trackers from the default_trackers list that are not used, to save being asked everytime
-        "default_trackers": "ACM, AITHER, AL, ANT, BHD, BHDTV, BLU, CBR, FNP, HDB, HDT, HP, HUNO, LCD, LST, LT, LUME, MTV, NBL, OE, OTW, PSS, PTER, PTP, PTT, R4E, RF, RTF, SN, STC, THR, TIK, TL, ULCX, UTP, YOINK",
-
+        "default_trackers": "ACM, AITHER, AL, ANT, BHD, BHDTV, BLU, CBR, DP, FNP, HDB, HDT, HHD, HP, HUNO, LCD, LST, LT, LUME, MTV, MS, NBL, OE, OTW, PSS, PTER, PTP, PTT, R4E, RF, RTF, SN, SPD, SP, STC, THR, TIK, TL, ULCX, UTP, YOINK, YUS",
         "ACM": {
             "api_key": "ACM api key",
             "announce_url": "https://asiancinema.me/announce/customannounceurl",
             # "anon" : False,
-
             # FOR INTERNAL USE ONLY:
             # "internal" : True,
             # "internal_groups" : ["What", "Internal", "Groups", "Are", "You", "In"],
@@ -219,11 +196,16 @@ config = {
             "announce_url": "https://luminarr.me/announce/customannounceurl",
             # "anon" : "False"
         },
+        "MS": {
+            "api_key": "MidnightScene api key",
+            "announce_url": "https://midnightscene.cc/announce/customannounceurl",
+            # "anon" : False
+        },
         "MTV": {
-            'api_key': 'get from security page',
-            'username': '<USERNAME>',
-            'password': '<PASSWORD>',
-            'announce_url': "get from https://www.morethantv.me/upload.php",
+            "api_key": "get from security page",
+            "username": "<USERNAME>",
+            "password": "<PASSWORD>",
+            "announce_url": "get from https://www.morethantv.me/upload.php",
             # 'anon': False,
             # 'otp_uri' : 'OTP URI, read the following for more information https://github.com/google/google-authenticator/wiki/Key-Uri-Format'
         },
@@ -248,7 +230,7 @@ config = {
             # "anon" : False
         },
         "PTER": {  # Does not appear to be working at all
-            "passkey": 'passkey',
+            "passkey": "passkey",
             "img_rehost": False,
             "username": "",
             "password": "",
@@ -259,10 +241,10 @@ config = {
             "useAPI": False,  # Set to True if using PTP for automatic ID searching
             "add_web_source_to_desc": True,
             "ApiUser": "ptp api user",
-            "ApiKey": 'ptp api key',
+            "ApiKey": "ptp api key",
             "username": "",
             "password": "",
-            "announce_url": ""
+            "announce_url": "",
         },
         "PTT": {
             "api_key": "PTT api key",
@@ -282,7 +264,7 @@ config = {
         "RTF": {
             "username": "username",
             "password": "password",
-            "api_key": 'get_it_by_running_/api/ login command from https://retroflix.club/api/doc',
+            "api_key": "get_it_by_running_/api/ login command from https://retroflix.club/api/doc",
             "announce_url": "get from upload page",
             # "anon": True
         },
@@ -370,7 +352,6 @@ config = {
             # "anon" : "False"
         },
     },
-
     # enable_search to True will automatically try and find a suitable hash to save having to rehash when creating torrents
     # Should use the qbit API, but will also use the torrent_storage_dir to find suitable hashes
     # If you find issue, use the "--debug" argument to print out some related details
@@ -386,7 +367,6 @@ config = {
             "qbit_user": "username",
             "qbit_pass": "password",
             # "torrent_storage_dir": "path/to/BT_backup folder"  ## use double-backslash on windows eg: "C:\\client\\backup"
-
             # Remote path mapping (docker/etc.) CASE SENSITIVE
             # "local_path": "/LocalPath",
             # "remote_path": "/RemotePath"
@@ -401,10 +381,8 @@ config = {
             # "torrent_storage_dir": "path/to/BT_backup folder"
             # "qbit_tag": "tag",
             # "qbit_cat": "category"
-
             # Content Layout for adding .torrents: "Original"(recommended)/"Subfolder"/"NoSubfolder"
-            "content_layout": "Original"
-
+            "content_layout": "Original",
             # Enable automatic torrent management if listed path(s) are present in the path
             # If using remote path mapping, use remote path
             # For using multiple paths, use a list ["path1", "path2"]
@@ -412,21 +390,17 @@ config = {
             # Remote path mapping (docker/etc.) CASE SENSITIVE
             # "local_path" : "E:\\downloads\\tv",
             # "remote_path" : "/remote/downloads/tv"
-
             # Set to False to skip verify certificate for HTTPS connections; for instance, if the connection is using a self-signed certificate.
             # "VERIFY_WEBUI_CERTIFICATE" : True
         },
-
         "rtorrent_sample": {
             "torrent_client": "rtorrent",
             "rtorrent_url": "https://user:password@server.host.tld:443/username/rutorrent/plugins/httprpc/action.php",
             # "torrent_storage_dir" : "path/to/session folder",
             # "rtorrent_label" : "Add this label to all uploads"
-
             # Remote path mapping (docker/etc.) CASE SENSITIVE
             # "local_path" : "/LocalPath",
             # "remote_path" : "/RemotePath"
-
         },
         "deluge_sample": {
             "torrent_client": "deluge",
@@ -435,25 +409,21 @@ config = {
             "deluge_user": "username",
             "deluge_pass": "password",
             # "torrent_storage_dir" : "path/to/session folder",
-
             # Remote path mapping (docker/etc.) CASE SENSITIVE
             # "local_path" : "/LocalPath",
             # "remote_path" : "/RemotePath"
         },
         "watch_sample": {
             "torrent_client": "watch",
-            "watch_folder": "/Path/To/Watch/Folder"
+            "watch_folder": "/Path/To/Watch/Folder",
         },
-
     },
-
     "DISCORD": {
         "discord_bot_token": "discord bot token",
         "discord_bot_description": "L4G's Upload Assistant",
         "command_prefix": "!",
         "discord_channel_id": "discord channel id for use",
         "admin_id": "your discord user id",
-
         "search_dir": "Path/to/downloads/folder/   this is used for search",
         # Alternatively, search multiple folders:
         # "search_dir" : [
@@ -468,7 +438,7 @@ config = {
             "ACM": "🍙",
             "MANUAL": "📩",
             "UPLOAD": "✅",
-            "CANCEL": "🚫"
-        }
-    }
+            "CANCEL": "🚫",
+        },
+    },
 }
