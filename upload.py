@@ -558,7 +558,6 @@ async def do_the_thing(base_dir):
             'BHD': {'draft_live': True},
             'BLU': {'mod_q': True, 'draft': False},
             'LST': {'mod_q': True, 'draft': True},
-            'OE': {'mod_q': True, 'draft': False}
         }
 
         async def check_mod_q_and_draft(tracker_class, meta, debug, disctype):
