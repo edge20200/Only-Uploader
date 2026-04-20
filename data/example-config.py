@@ -69,9 +69,9 @@ config = {
     },
     "TRACKERS": {
         # Which trackers do you want to upload to?
-        # Available tracker: ACM, AITHER, AL, ANT, BHD, BHDTV, BLU, CBR, DP, FNP, HDB, HDT, HHD, HP, HUNO, LCD, LST, LT, LUME, MTV, MS, NBL, OE, OTW, PSS, PTER, PTP, PTT, R4E, RF, RTF, SN, SPD, SP, STC, THR, TIK, TL, ULCX, UTP, YOINK, YUS
+        # Available tracker: ACM, AITHER, AL, ANT, BHD, BHDTV, BLU, CBR, DP, FNP, HDB, HDT, HHD, HP, HUNO, IHD, LCD, LST, LT, LUME, MTV, MS, NBL, OE, OTW, PSS, PTER, PTP, PTT, R4E, RF, RTF, SN, SPD, SP, STC, THR, TIK, TL, ULCX, UTP, YOINK, YUS
         # Remove the trackers from the default_trackers list that are not used, to save being asked everytime
-        "default_trackers": "ACM, AITHER, AL, ANT, BHD, BHDTV, BLU, CBR, DP, FNP, HDB, HDT, HHD, HP, HUNO, LCD, LST, LT, LUME, MTV, MS, NBL, OE, OTW, PSS, PTER, PTP, PTT, R4E, RF, RTF, SN, SPD, SP, STC, THR, TIK, TL, ULCX, UTP, YOINK, YUS",
+        "default_trackers": "ACM, AITHER, AL, ANT, BHD, BHDTV, BLU, CBR, DP, FNP, HDB, HDT, HHD, HP, HUNO, IHD, LCD, LST, LT, LUME, MTV, MS, NBL, OE, OTW, PSS, PTER, PTP, PTT, R4E, RF, RTF, SN, SPD, SP, STC, THR, TIK, TL, ULCX, UTP, YOINK, YUS",
         "ACM": {
             "api_key": "ACM api key",
             "announce_url": "https://asiancinema.me/announce/customannounceurl",
@@ -166,6 +166,11 @@ config = {
         "HUNO": {
             "api_key": "HUNO api key",
             "announce_url": "https://hawke.uno/announce/customannounceurl",
+            # "anon" : False
+        },
+        "IHD": {
+            "api_key": "IHD api key",
+            "announce_url": "https://infinityhd.net/announce/customannounceurl",
             # "anon" : False
         },
         "JPTV": {
