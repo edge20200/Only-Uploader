@@ -25,7 +25,7 @@ class MS:
     def __init__(self, config):
         self.config = config
         self.tracker = "MS"
-        self.source_flag = "UNIT3D"
+        self.source_flag = "MidnightScene"
         self.upload_url = "https://midnightscene.cc/api/torrents/upload"
         self.search_url = "https://midnightscene.cc/api/torrents/filter"
         self.torrent_url = "https://midnightscene.cc/torrents/"
