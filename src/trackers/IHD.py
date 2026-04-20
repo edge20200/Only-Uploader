@@ -31,32 +31,127 @@ class IHD:
         self.torrent_url = "https://infinityhd.net/torrents/"
         self.signature = "\n[center][url=https://github.com/edge20200/Only-Uploader]Powered by Only-Uploader[/url][/center]"
         self.banned_groups = [
+            "1000",
+            "24xHD",
+            "41RGB",
+            "4K4U",
+            "AG",
+            "AOC",
+            "AROMA",
+            "aXXo",
+            "AZAZE",
+            "BARC0DE",
+            "BAUCKLEY",
+            "BdC",
+            "beAst",
+            "BRiNK",
+            "BTM",
+            "C1NEM4",
+            "C4K",
+            "CDDHD",
+            "CHAOS",
+            "CHD",
+            "CHX",
+            "CiNE",
+            "COLLECTiVE",
+            "CREATiVE24",
+            "CrEwSaDe",
+            "CTFOH",
+            "d3g",
+            "DDR",
+            "DepraveD",
+            "DNL",
+            "DRX",
+            "EPiC",
+            "EuReKA",
+            "EVO",
+            "FaNGDiNG0",
+            "Feranki1980",
+            "FGT",
+            "FMD",
+            "FRDS",
+            "FZHD",
+            "GalaxyRG",
+            "GHD",
+            "GHOSTS",
+            "GPTHD",
+            "HDHUB4U",
+            "HDS",
+            "HDT",
+            "HDTime",
+            "HDWinG",
+            "HiQVE",
+            "in",
+            "iNTENSO",
+            "iPlanet",
+            "iVy",
+            "jennaortegaUHD",
+            "JFF",
+            "KC",
             "KiNGDOM",
-            "Lama",
+            "KIRA",
+            "L0SERNIGHT",
+            "LAMA",
+            "Leffe",
+            "Liber8",
+            "LiGaS",
+            "LT",
+            "LUCY",
+            "MarkII",
             "MeGusta",
-            "MezRips",
+            "Mesc",
             "mHD",
-            "mRS",
-            "msd",
-            "NeXus",
+            "mSD",
+            "MT",
+            "MTeam",
+            "MySiLU",
             "NhaNc3",
+            "nhanc3",
             "nHD",
+            "nikt0",
+            "nSD",
+            "OFT",
+            "Paheph",
+            "PATOMiEL",
+            "PRODJi",
+            "PSA",
+            "PTNK",
             "RARBG",
-            "Radarr",
-            "RCDiVX",
             "RDN",
+            "Rifftrax",
+            "RU4HD",
             "SANTi",
-            "VXT",
-            "Will1869",
+            "SasukeducK",
+            "Scene",
+            "SHD",
+            "ShieldBearer",
+            "STUTTERSHIT",
+            "SUNSCREEN",
+            "TBS",
+            "TEKNO3D",
+            "TG",
+            "Tigole",
+            "TIKO",
+            "VIDEOHOLE",
+            "VISIONPLUSHDR-X",
+            "WAF",
+            "WiKi",
+            "worldmkv",
             "x0r",
-            "XS",
+            "XLF",
             "YIFY",
-            "YTS",
-            "ZKBL",
-            "ZmN",
-            "ZMNT",
+            "YTSMX",
+            "Zero00",
+            "Zeus",
         ]
-        pass
+
+    def get_headers(self):
+        """Return headers with Bearer token authorization for UNIT3D API"""
+        return {
+            'User-Agent': f'Upload Assistant/2.2 ({platform.system()} {platform.release()})',
+            'Authorization': f'Bearer {self.config["TRACKERS"][self.tracker]["api_key"].strip()}',
+            'Accept': 'application/json'
+        }
 
     async def upload(self, meta, disctype):
         common = COMMON(config=self.config)
@@ -141,10 +236,8 @@ class IHD:
             "sticky": 0,
             "mod_queue_opt_in": modq,
         }
-        headers = {
-            "User-Agent": f"Upload Assistant/2.2 ({platform.system()} {platform.release()})"
-        }
-        params = {"api_token": self.config["TRACKERS"][self.tracker]["api_key"].strip()}
+        headers = self.get_headers()
+        params = {}
 
         # Internal
         if self.config["TRACKERS"][self.tracker].get("internal", False) is True:
@@ -299,7 +392,7 @@ class IHD:
 
     async def get_type_id(self, type):
         type_id = {
-            "DISC": "17",
+            "DISC": "1",
             "REMUX": "2",
             "WEBDL": "4",
             "WEBRIP": "5",
@@ -328,13 +421,13 @@ class IHD:
         dupes = []
         console.print("[yellow]Searching for existing torrents on site...")
         params = {
-            "api_token": self.config["TRACKERS"][self.tracker]["api_key"].strip(),
             "tmdbId": meta["tmdb"],
             "categories[]": await self.get_cat_id(meta["category"]),
             "types[]": await self.get_type_id(meta["type"]),
             "resolutions[]": await self.get_res_id(meta["resolution"]),
             "name": "",
         }
+        headers = self.get_headers()
         if meta["category"] == "TV":
             params["name"] = (
                 params["name"] + f" {meta.get('season', '')}{meta.get('episode', '')}"
@@ -343,7 +436,7 @@ class IHD:
             params["name"] = params["name"] + f" {meta['edition']}"
 
         try:
-            response = requests.get(url=self.search_url, params=params)
+            response = requests.get(url=self.search_url, params=params, headers=headers)
             response = response.json()
             for each in response["data"]:
                 result = [each][0]["attributes"]["name"]
@@ -364,12 +457,12 @@ class IHD:
         quoted_name = f'"{Name}"'
 
         params = {
-            "api_token": self.config["TRACKERS"][self.tracker]["api_key"].strip(),
             "name": quoted_name,
         }
+        headers = self.get_headers()
 
         try:
-            response = requests.get(url=self.search_url, params=params)
+            response = requests.get(url=self.search_url, params=params, headers=headers)
             response.raise_for_status()
             response_data = response.json()
 
