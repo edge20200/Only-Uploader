@@ -67,15 +67,17 @@ class ANT():
         '''
         audio = meta.get('audio', '').upper()
         audio_map = {
-            'MP2': 'MP2',
-            'MP3': 'MP3',
-            'AAC': 'AAC',
-            'DD': 'AC3',
-            'DTS': 'DTS',
-            'FLAC': 'FLAC',
-            'PCM': 'PCM',
-            'TRUEHD': 'True-HD',
-            'OPUS': 'Opus'
+            "DD+": "EAC3",
+            "DD": "AC3",
+            "DTS-HD MA": "DTSMA",
+            "DTS": "DTS",
+            "TRUEHD": "TrueHD",
+            "FLAC": "FLAC",
+            "PCM": "PCM",
+            "OPUS": "Opus",
+            "AAC": "AAC",
+            "MP3": "MP3",
+            "MP2": "MP2",
         }
         for key, value in audio_map.items():
             if key in audio:
