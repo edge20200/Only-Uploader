@@ -109,7 +109,7 @@ class OE():
             data['season_number'] = meta.get('season_int', '0')
             data['episode_number'] = meta.get('episode_int', '0')
         headers = {
-            'User-Agent': f'Upload Assistant/2.2 ({platform.system()} {platform.release()})'
+            'User-Agent': f'OnlyUploader ({platform.system()} {platform.release()})'
         }
         params = {
             'api_token': self.config['TRACKERS'][self.tracker]['api_key'].strip()
@@ -118,11 +118,24 @@ class OE():
         if meta['debug'] is False:
             response = requests.post(url=self.upload_url, files=files, data=data, headers=headers, params=params)
             try:
+                resp_json = response.json()
+                console.print(resp_json)
 
-                console.print(response.json())
-            except Exception:
+                # 🔥 Download the torrent file after upload
+                if "data" in resp_json and resp_json["data"]:
+                    await common.add_tracker_torrent(
+                        meta,
+                        self.tracker,
+                        self.source_flag,
+                        self.config['TRACKERS'][self.tracker].get('announce_url'),
+                        "https://onlyencodes.cc/torrents/" + str(resp_json["data"]),
+                        headers=headers,
+                        params=params,
+                        downurl=resp_json["data"]
+                    )
+            except Exception as e:
+                console.print(f"[red]Error while uploading or downloading torrent: {e}[/red]")
                 console.print("It may have uploaded, go check")
-                open_torrent.close()
                 return
         else:
             console.print("[cyan]Request Data:")
@@ -334,7 +347,7 @@ class OE():
         if meta['category'] == 'TV':
             params['name'] = f"{meta.get('season', '')}{meta.get('episode', '')}"
         if meta.get('edition', "") != "":
-            params['name'] + meta['edition']
+            params['name'] = params['name'] + f" {meta['edition']}"
         try:
             response = requests.get(url=self.search_url, params=params)
             response = response.json()
