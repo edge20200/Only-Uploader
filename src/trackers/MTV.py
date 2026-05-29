@@ -14,6 +14,7 @@ from src.trackers.COMMON import COMMON
 from datetime import datetime
 import glob
 import multiprocessing
+from urllib.parse import urlparse
 
 
 class MTV():
@@ -45,10 +46,20 @@ class MTV():
         await self.upload_with_retry(meta, cookiefile, common)
 
     async def upload_with_retry(self, meta, cookiefile, common, img_host_index=1):
-        approved_image_hosts = ['onlyimage', 'ptpimg', 'imgbox']
+        approved_image_hosts = ['imgbb', 'ptpimg', 'imgbox']
+        url_host_mapping = {
+            "i.ibb.co": "imgbb",
+            "ibb.co": "imgbb",
+            "ptpimg.me": "ptpimg",
+            "images2.imgbox.com": "imgbox",
+            "imgbox.com": "imgbox",
+        }
         images_reuploaded = False
 
-        if all(any(host in image['raw_url'] for host in approved_image_hosts) for image in meta['image_list']):
+        if all(
+            url_host_mapping.get(urlparse(image['raw_url']).netloc, urlparse(image['raw_url']).netloc) in approved_image_hosts
+            for image in meta['image_list']
+        ):
             console.print("[green]Images are already hosted on an approved image host. Skipping re-upload.")
             image_list = meta['image_list']
 
@@ -181,6 +192,14 @@ class MTV():
         if approved_image_hosts is None:
             approved_image_hosts = ['onlyimage', 'ptpimg', 'imgbox']
 
+        url_host_mapping = {
+            "i.ibb.co": "imgbb",
+            "ibb.co": "imgbb",
+            "ptpimg.me": "ptpimg",
+            "images2.imgbox.com": "imgbox",
+            "imgbox.com": "imgbox",
+        }
+
         retry_mode = False
         images_reuploaded = False
         new_images_key = 'mtv_images_key'
@@ -280,7 +299,10 @@ class MTV():
             for image in uploaded_images:
                 console.print(f"[debug] Response in upload_image_task: {image['img_url']}, {image['raw_url']}, {image['web_url']}")
 
-        if not all(any(x in image['raw_url'] for x in approved_image_hosts) for image in meta.get(new_images_key, [])):
+        if not all(
+            url_host_mapping.get(urlparse(image['raw_url']).netloc, urlparse(image['raw_url']).netloc) in approved_image_hosts
+            for image in meta.get(new_images_key, [])
+        ):
             console.print("[red]Unsupported image host detected, please use one of the approved image hosts")
             return meta[new_images_key], True, images_reuploaded  # Trigger retry_mode if switching hosts
 
@@ -632,7 +654,7 @@ class MTV():
         elif meta['tvdb_id'] != 0:
             params['tvdbid'] = meta['tvdb_id']
         else:
-            params['q'] = meta['title'].replace(': ', ' ').replace('’', '').replace("'", '')
+            params['q'] = meta['title'].replace(': ', ' ').replace("'", '').replace("'", '')
 
         try:
             rr = requests.get(url=self.search_url, params=params)
