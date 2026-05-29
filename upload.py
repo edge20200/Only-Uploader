@@ -64,6 +64,7 @@ import cli_ui
 import traceback
 import click
 import re
+import aiohttp  # NEW IMPORT ADDED
 
 from src.console import console
 from rich.markdown import Markdown
@@ -160,7 +161,7 @@ def resolve_queue_with_glob_or_split(path, paths, allowed_extensions=None):
         display_queue(queue)
     elif not os.path.exists(os.path.dirname(path)):
         queue = [
-            file for file in resolve_split_path(path)  # noqa F8221
+            file for file in resolve_split_path(path)  # noqa F821
             if os.path.isdir(file) or (os.path.isfile(file) and (allowed_extensions is None or file.lower().endswith(tuple(allowed_extensions))))
         ]
         display_queue(queue)
@@ -626,6 +627,17 @@ async def do_the_thing(base_dir):
                     dupes = await tracker_class.search_existing(meta, disctype)
                     if 'skipping' not in meta or meta['skipping'] is None:
                         dupes = await common.filter_dupes(dupes, meta)
+
+                        # Check for exact match before proceeding with dupe check
+                        exact_match = find_exact_match(dupes, meta)
+                        if exact_match:
+                            if await handle_exact_match(tracker_class, tracker_class.tracker, exact_match, meta, client):
+                                console.print(f"[bold green]Successfully handled exact match - skipping upload to {tracker_class.tracker}[/bold green]")
+                                meta['skipping'] = None
+                                continue  # Skip the rest of the upload process for this tracker
+                            else:
+                                console.print("[bold yellow]Exact match handling failed or skipped - proceeding with normal flow[/bold yellow]")
+
                         meta = dupe_check(dupes, meta)
 
                         # Proceed with upload if the meta is set to upload
@@ -678,6 +690,17 @@ async def do_the_thing(base_dir):
                         dupes = await tracker_class.search_existing(meta, disctype)
                         if 'skipping' not in meta or meta['skipping'] is None:
                             dupes = await common.filter_dupes(dupes, meta)
+
+                            # Check for exact match before proceeding with dupe check
+                            exact_match = find_exact_match(dupes, meta)
+                            if exact_match:
+                                if await handle_exact_match(tracker_class, tracker_class.tracker, exact_match, meta, client):
+                                    console.print(f"[bold green]Successfully handled exact match - skipping upload to {tracker_class.tracker}[/bold green]")
+                                    meta['skipping'] = None
+                                    continue  # Skip the rest of the upload process for this tracker
+                                else:
+                                    console.print("[bold yellow]Exact match handling failed or skipped - proceeding with normal flow[/bold yellow]")
+
                             meta = dupe_check(dupes, meta)
 
                     if 'skipping' not in meta or meta['skipping'] is None:
@@ -710,6 +733,16 @@ async def do_the_thing(base_dir):
                     if await tracker_class.validate_credentials(meta) is True:
                         dupes = await tracker_class.search_existing(meta, disctype)
                         dupes = await common.filter_dupes(dupes, meta)
+
+                        # Check for exact match before proceeding with dupe check
+                        exact_match = find_exact_match(dupes, meta)
+                        if exact_match:
+                            if await handle_exact_match(tracker_class, tracker_class.tracker, exact_match, meta, client):
+                                console.print(f"[bold green]Successfully handled exact match - skipping upload to {tracker_class.tracker}[/bold green]")
+                                continue  # Skip the rest of the upload process for this tracker
+                            else:
+                                console.print("[bold yellow]Exact match handling failed or skipped - proceeding with normal flow[/bold yellow]")
+
                         meta = dupe_check(dupes, meta)
                         if meta['upload'] is True:
                             await tracker_class.upload(meta, disctype)
@@ -888,6 +921,218 @@ def get_confirmation(meta):
         confirm = True
 
     return confirm
+
+
+# NEW EXACT MATCH FUNCTIONS ADDED HERE
+def find_exact_match(dupes, meta):
+    """
+    Find exact matches in the dupes list.
+    Returns the exact match string if found, otherwise None.
+    """
+    target_name = meta['name'].lower()
+
+    for dupe in dupes:
+        if dupe.lower() == target_name:
+            return dupe
+    return None
+
+
+async def handle_exact_match(tracker_class, tracker_name, exact_match_name, meta, client):
+    """
+    Handle exact match found during upload process.
+    Attempts to download existing torrent from tracker and add to client instead of uploading.
+    Returns True if successful, False otherwise.
+    """
+    console.print(f"[bold yellow]Exact match found: [bold green]{exact_match_name}[/bold green][/bold yellow]")
+    console.print(f"[bold cyan]Exact match detected on [bold green]{tracker_name}[/bold green][/bold cyan]")
+
+    # Ask user what to do
+    if not meta['unattended']:
+        use_existing = cli_ui.ask_yes_no(f"Download existing torrent from {tracker_name} instead of uploading?", default=True)
+        if not use_existing:
+            console.print("[bold yellow]Proceeding with normal upload flow[/bold yellow]")
+            return False
+    else:
+        console.print("[bold green]Auto-using existing torrent (unattended mode)[/bold green]")
+
+    try:
+        # For UNIT3D trackers, we can search for the exact match and get the download URL
+        if hasattr(tracker_class, 'search_url'):
+            console.print(f"[bold cyan]Searching for torrent ID on {tracker_name}...[/bold cyan]")
+            params = {
+                'api_token': tracker_class.config['TRACKERS'][tracker_name]['api_key'].strip(),
+                'name': exact_match_name  # Search without quotes for better matching
+            }
+
+            if meta.get('debug', False):
+                console.print(f"[blue]Debug: Searching with params: name={exact_match_name}[/blue]")
+
+            try:
+                response = requests.get(url=tracker_class.search_url, params=params, timeout=30)
+                response.raise_for_status()
+                response_data = response.json()
+
+                if meta.get('debug', False):
+                    console.print(f"[blue]Debug: Response keys: {response_data.keys()}[/blue]")
+
+                if response_data.get('data'):
+                    if meta.get('debug', False):
+                        console.print(f"[blue]Debug: Found {len(response_data['data'])} results in data[/blue]")
+                else:
+                    if meta.get('debug', False):
+                        console.print(f"[blue]Debug: No 'data' key in response[/blue]")
+                        console.print(f"[blue]Debug: Full response: {response_data}[/blue]")
+
+                if response_data.get('data') and isinstance(response_data['data'], list) and len(response_data['data']) > 0:
+                    # Look for exact match by name
+                    exact_match_result = None
+                    for result in response_data['data']:
+                        result_name = result.get('attributes', {}).get('name', '')
+                        if meta.get('debug', False):
+                            console.print(f"[blue]Debug: Checking result: {result_name}[/blue]")
+
+                        # Debug: Show the full result structure
+                        if meta.get('debug', False):
+                            console.print(f"[blue]Debug: Result keys: {result.keys()}[/blue]")
+
+                        if result_name.lower() == exact_match_name.lower():
+                            exact_match_result = result
+                            if meta.get('debug', False):
+                                console.print(f"[green]Debug: Found exact match result![/green]")
+                            break
+
+                    if exact_match_result:
+                        if meta.get('debug', False):
+                            console.print(f"[blue]Debug: Full exact_match_result: {exact_match_result}[/blue]")
+
+                        # Try different ways to get the torrent ID
+                        torrent_id = None
+
+                        # Method 1: Direct ID field (standard UNIT3D structure)
+                        if 'id' in exact_match_result:
+                            torrent_id = exact_match_result['id']
+                            if meta.get('debug', False):
+                                console.print(f"[green]Debug: Found ID using direct field: {torrent_id}[/green]")
+
+                        # Method 2: ID in attributes (alternative structure)
+                        elif 'attributes' in exact_match_result and 'id' in exact_match_result['attributes']:
+                            torrent_id = exact_match_result['attributes']['id']
+                            if meta.get('debug', False):
+                                console.print(f"[green]Debug: Found ID in attributes: {torrent_id}[/green]")
+
+                        # Method 3: Check details_link for ID
+                        elif 'attributes' in exact_match_result and 'details_link' in exact_match_result['attributes']:
+                            details_link = exact_match_result['attributes']['details_link']
+                            if meta.get('debug', False):
+                                console.print(f"[blue]Debug: Found details_link: {details_link}[/blue]")
+                            # Extract ID from details_link (e.g., "/torrents/113964" -> "113964")
+                            id_match = re.search(r'/torrents/(\d+)', details_link)
+                            if id_match:
+                                torrent_id = id_match.group(1)
+                                if meta.get('debug', False):
+                                    console.print(f"[green]Debug: Extracted ID from details_link: {torrent_id}[/green]")
+
+                        torrent_name = exact_match_result.get('attributes', {}).get('name', exact_match_name)
+
+                        if meta.get('debug', False):
+                            console.print(f"[blue]Debug: Final Torrent ID: {torrent_id}[/blue]")
+                            console.print(f"[blue]Debug: Torrent Name: {torrent_name}[/blue]")
+
+                        if torrent_id:
+                            console.print(f"[bold green]Found torrent ID: [yellow]{torrent_id}[/yellow][/bold green]")
+
+                            # Try to get download link from API response first
+                            download_url = None
+                            if 'attributes' in exact_match_result and 'download_link' in exact_match_result['attributes']:
+                                download_url = exact_match_result['attributes']['download_link']
+                                if meta.get('debug', False):
+                                    console.print(f"[green]Debug: Using API download_link: {download_url}[/green]")
+                            else:
+                                # Fallback: construct download URL with correct format
+                                base_url = tracker_class.search_url.replace('/api/torrents/filter', '')
+                                download_url = f"{base_url}/torrents/download/{torrent_id}"
+                                if meta.get('debug', False):
+                                    console.print(f"[blue]Debug: Constructed download URL: {download_url}[/blue]")
+
+                            torrent_path = f"{meta['base_dir']}/tmp/{meta['uuid']}/[{tracker_name}]{meta['clean_name']}.torrent"
+
+                            console.print(f"[bold cyan]Downloading torrent from [bold green]{tracker_name}[/bold green][/bold cyan]")
+
+                            async with aiohttp.ClientSession() as session:
+                                try:
+                                    async with session.get(download_url, params=params, timeout=30) as r:
+                                        if meta.get('debug', False):
+                                            console.print(f"[blue]Debug: Response status: {r.status}[/blue]")
+                                        if r.status == 200:
+                                            content_length = r.headers.get('Content-Length', 'unknown')
+                                            if meta.get('debug', False):
+                                                console.print(f"[blue]Debug: Content-Length: {content_length}[/blue]")
+
+                                            with open(torrent_path, "wb") as f:
+                                                async for chunk in r.content.iter_chunked(8192):
+                                                    f.write(chunk)
+
+                                            file_size = os.path.getsize(torrent_path)
+                                            if meta.get('debug', False):
+                                                console.print(f"[blue]Debug: Downloaded file size: {file_size} bytes[/blue]")
+
+                                            console.print(f"[bold green]Successfully downloaded existing torrent[/bold green]")
+                                            console.print(f"[bold cyan]Torrent saved to: [yellow]{torrent_path}[/yellow][/bold cyan]")
+
+                                            # Add to client
+                                            await client.add_to_client(meta, tracker_name)
+                                            console.print(f"[bold green]Successfully added existing torrent to client[/bold green]")
+                                            return True
+                                        else:
+                                            console.print(f"[bold red]Failed to download torrent: HTTP {r.status}[/bold red]")
+                                            try:
+                                                error_text = await r.text()
+                                                console.print(f"[bold red]Error response: {error_text}[/bold red]")
+                                            except:
+                                                pass
+                                            return False
+                                except aiohttp.ClientError as e:
+                                    console.print(f"[bold red]Error downloading torrent: {str(e)}[/bold red]")
+                                    return False
+                        else:
+                            console.print(f"[bold red]Could not extract torrent ID from result[/bold red]")
+                            if meta.get('debug', False):
+                                console.print(f"[bold yellow]Available keys in result: {list(exact_match_result.keys())}[/bold yellow]")
+                            return False
+                    else:
+                        console.print(f"[bold yellow]No exact match found in search results[/bold yellow]")
+                        return False
+                else:
+                    console.print(f"[bold yellow]Could not find torrent ID for exact match - no data returned from API[/bold yellow]")
+                    return False
+
+            except requests.HTTPError as e:
+                console.print(f"[bold red]HTTP error during search: HTTP {e.response.status_code}[/bold red]")
+                try:
+                    error_text = e.response.text
+                    console.print(f"[bold red]Error response: {error_text}[/bold red]")
+                except:
+                    pass
+                return False
+            except requests.Timeout:
+                console.print(f"[bold red]Timeout during search API call[/bold red]")
+                return False
+            except requests.RequestException as e:
+                console.print(f"[bold red]Network error during search: {str(e)}[/bold red]")
+                return False
+            except ValueError as e:
+                console.print(f"[bold red]JSON decode error during search: {str(e)}[/bold red]")
+                return False
+        else:
+            console.print(f"[bold yellow]This tracker type doesn't support automatic download of existing torrents.[/bold yellow]")
+            console.print(f"[bold yellow]Please download [bold green]{exact_match_name}[/bold green] manually from [bold green]{tracker_name}[/bold green] and add to your torrent client.[/bold yellow]")
+            return False
+
+    except Exception as e:
+        console.print(f"[bold red]Error attempting to download existing torrent: {str(e)}[/bold red]")
+        import traceback
+        console.print(f"[bold red]Traceback: {traceback.format_exc()}[/bold red]")
+        return False
 
 
 def dupe_check(dupes, meta):
