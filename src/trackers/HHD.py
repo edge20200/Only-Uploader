@@ -166,9 +166,10 @@ class HHD:
             "mod_queue_opt_in": modq,
         }
         headers = {
-            "User-Agent": f"Upload Assistant/2.2 ({platform.system()} {platform.release()})"
+            "User-Agent": f"Upload Assistant/2.2 ({platform.system()} {platform.release()})",
+            "Authorization": f"Bearer {self.config['TRACKERS'][self.tracker]['api_key'].strip()}"
         }
-        params = {"api_token": self.config["TRACKERS"][self.tracker]["api_key"].strip()}
+        params = {}
 
         # Internal
         if self.config["TRACKERS"][self.tracker].get("internal", False) is True:
@@ -308,6 +309,44 @@ class HHD:
                 (meta["audio"]), f"{video_codec} {meta['audio']}", 1
             )
 
+        if (
+            meta["category"] == "TV"
+            and meta.get("tv_pack", 0) == 0
+            and meta.get("episode_title_storage", "").strip() != ""
+            and meta["episode"].strip() != ""
+        ):
+            # Filter out directory-related terms that shouldn't be in episode titles
+            episode_title = meta["episode_title_storage"]
+            excluded_terms = [
+                "uploading",
+                "queued",
+                "to-upload",
+                "downloading",
+                "processing",
+                "complete",
+                "finished",
+                "temp",
+                "_queued",
+                "_uploading",
+                "to-upload",
+                "upload",
+            ]
+
+            # Check if the episode title contains any excluded terms
+            episode_title_lower = episode_title.lower()
+            should_skip = any(
+                term.lower() in episode_title_lower for term in excluded_terms
+            )
+
+            # Also check if the episode title looks like a date (YYYY.MM.DD format)
+            # which is valid for daily shows and should be included
+            is_date = re.match(r"\d{4}[-.]\d{2}[-.]\d{2}", episode_title) is not None
+
+            if not should_skip or is_date:
+                hhd_name = hhd_name.replace(
+                    meta["episode"], f"{meta['episode']} {episode_title}", 1
+                )
+
         return hhd_name
 
     async def get_cat_id(self, category_name):
@@ -347,8 +386,10 @@ class HHD:
     async def search_existing(self, meta, disctype):
         dupes = []
         console.print("[yellow]Searching for existing torrents on site...")
+        headers = {
+            "Authorization": f"Bearer {self.config['TRACKERS'][self.tracker]['api_key'].strip()}"
+        }
         params = {
-            "api_token": self.config["TRACKERS"][self.tracker]["api_key"].strip(),
             "tmdbId": meta["tmdb"],
             "categories[]": await self.get_cat_id(meta["category"]),
             "types[]": await self.get_type_id(meta["type"]),
@@ -363,7 +404,7 @@ class HHD:
             params["name"] = params["name"] + f" {meta['edition']}"
 
         try:
-            response = requests.get(url=self.search_url, params=params)
+            response = requests.get(url=self.search_url, params=params, headers=headers)
             response = response.json()
             for each in response["data"]:
                 result = [each][0]["attributes"]["name"]
@@ -383,13 +424,15 @@ class HHD:
         Name = meta["name"]
         quoted_name = f'"{Name}"'
 
+        headers = {
+            "Authorization": f"Bearer {self.config['TRACKERS'][self.tracker]['api_key'].strip()}"
+        }
         params = {
-            "api_token": self.config["TRACKERS"][self.tracker]["api_key"].strip(),
             "name": quoted_name,
         }
 
         try:
-            response = requests.get(url=self.search_url, params=params)
+            response = requests.get(url=self.search_url, params=params, headers=headers)
             response.raise_for_status()
             response_data = response.json()
 
