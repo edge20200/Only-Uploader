@@ -102,17 +102,6 @@ class Args():
         args, before_args = parser.parse_known_args(input)
         args = vars(args)
         # console.print(args)
-        if meta.get('manual_frames') is not None:
-            try:
-                # Join the list into a single string, split by commas, and convert to integers
-                meta['manual_frames'] = [int(time.strip()) for time in meta['manual_frames'].split(',')]
-                # console.print(f"Processed manual_frames: {meta['manual_frames']}")
-            except ValueError:
-                console.print("[red]Invalid format for manual_frames. Please provide a comma-separated list of integers.")
-                console.print(f"Processed manual_frames: {meta['manual_frames']}")
-                sys.exit(1)
-        else:
-            meta['manual_frames'] = None  # Explicitly set it to None if not provided
         if len(before_args) >= 1 and not os.path.exists(' '.join(args['path'])):
             for each in before_args:
                 args['path'].append(each)
@@ -248,6 +237,19 @@ class Args():
                 meta[key] = value
             # if key == 'help' and value == True:
                 # parser.print_help()
+
+        # Must run after the loop above, which copies the raw string from args into meta
+        manual_frames = meta.get('manual_frames')
+        if isinstance(manual_frames, str):
+            try:
+                meta['manual_frames'] = [int(frame) for frame in manual_frames.split(',') if frame.strip()] or None
+            except ValueError:
+                console.print("[red]Invalid format for manual_frames. Please provide a comma-separated list of integers.")
+                console.print(f"[red]Got: {manual_frames}")
+                sys.exit(1)
+        elif not manual_frames:
+            meta['manual_frames'] = None
+
         return meta, parser, before_args
 
     def list_to_string(self, list):
