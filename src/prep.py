@@ -4116,31 +4116,17 @@ class Prep():
                 imdb_info['type'] = movie.kind
                 imdb_info['imdbID'] = movie.imdb_id
                 imdb_info['runtime'] = str(movie.duration // 60) if movie.duration else '0'
-                imdb_info['cover'] = movie.poster_image or meta.get('poster', '')
-                imdb_info['plot'] = movie.plot_outline or movie.plot or ''
+                imdb_info['cover'] = movie.cover_url or meta.get('poster', '')
+                imdb_info['plot'] = movie.plot or ''
                 imdb_info['genres'] = ', '.join([g for g in movie.genres]) if movie.genres else ''
                 imdb_info['rating'] = str(movie.rating) if movie.rating else 'N/A'
-                imdb_info['original_language'] = None
-                
-                # Try to get original language - handle different structures
-                if hasattr(movie, 'original_language'):
-                    orig_lang = movie.original_language
-                    if isinstance(orig_lang, list):
-                        imdb_info['original_language'] = orig_lang[0] if len(orig_lang) >= 1 else None
-                    elif isinstance(orig_lang, str):
-                        imdb_info['original_language'] = orig_lang
-                    else:
-                        imdb_info['original_language'] = None
-                
-                # Try to get directors - handle different structures
-                if hasattr(movie, 'principal_credits'):
-                    imdb_info['directors'] = []
-                    for credit in movie.principal_credits:
-                        if hasattr(credit, 'category') and credit.category == 'director':
-                            if hasattr(credit, 'credits') and isinstance(credit.credits, list):
-                                for person in credit.credits:
-                                    if hasattr(person, 'name'):
-                                        imdb_info['directors'].append(person.name)
+                # imdbinfo exposes languages as ISO codes (e.g. ['en', 'ko']); the first is the primary one
+                imdb_info['original_language'] = movie.languages[0] if movie.languages else None
+                imdb_info['directors'] = [p.name for p in (movie.directors or []) if getattr(p, 'name', None)]
+                if not imdb_info['directors']:
+                    # IMDb credits most series to creators rather than directors
+                    series_info = getattr(movie, 'info_series', None)
+                    imdb_info['directors'] = [p.name for p in (getattr(series_info, 'creators', None) or []) if getattr(p, 'name', None)]
                                 
             except Exception as e:
                 console.print(f"[yellow]IMDB: Error fetching data for IMDB ID {imdbID}: {str(e)}[/yellow]")
