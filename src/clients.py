@@ -6,7 +6,6 @@ import os
 import qbittorrentapi
 from deluge_client import DelugeRPCClient
 import base64
-from pyrobase.parts import Bunch
 import errno
 import asyncio
 import ssl
@@ -433,7 +432,7 @@ class Clients():
         if single:
             if os.path.isdir(datapath):
                 datapath = os.path.join(datapath, metainfo["info"]["name"])
-            files = [Bunch(
+            files = [dict(
                 path=[os.path.abspath(datapath)],
                 length=metainfo["info"]["length"],
             )]

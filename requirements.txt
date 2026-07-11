@@ -7,7 +7,6 @@ anitopy
 cli-ui
 qbittorrent-api
 deluge-client
-pyrobase
 requests
 cinemagoer
 imdbinfo
