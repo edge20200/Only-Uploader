@@ -1,5 +1,5 @@
 torf
-guessit
+guessit>=4.1.0
 ffmpeg-python
 pymediainfo==6.0.1
 tmdbsimple
