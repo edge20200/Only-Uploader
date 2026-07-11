@@ -1633,15 +1633,9 @@ class Prep():
         loglevel = 'verbose' if meta.get('ffdebug', False) else 'quiet'
         os.chdir(f"{base_dir}/tmp/{folder_id}")
 
-        if manual_frames:
-            manual_frames = [int(frame) for frame in manual_frames]
-            ss_times = [frame / frame_rate for frame in manual_frames]
-
-            if len(ss_times) < num_screens:
-                random_times = self.valid_ss_time(ss_times, num_screens - len(ss_times), length)
-                ss_times.extend(random_times)
-        else:
-            ss_times = self.valid_ss_time([], num_screens + 1, length)
+        # The capture loop below reads num_screens + 1 times
+        ss_times = [int(frame) / frame_rate for frame in manual_frames] if manual_frames else []
+        ss_times = self.valid_ss_time(ss_times, num_screens + 1, length)
 
         capture_tasks = []
         capture_results = []
