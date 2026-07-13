@@ -4201,16 +4201,19 @@ class Prep():
             tvdb_resp = self._make_tvmaze_request("https://api.tvmaze.com/lookup/shows", {"thetvdb": tvdbID}, meta)
             if tvdb_resp:
                 results.append(tvdb_resp)
-        if int(imdbID) != 0:
+        if not results and int(imdbID) != 0:
             imdb_resp = self._make_tvmaze_request("https://api.tvmaze.com/lookup/shows", {"imdb": f"tt{imdbID}"}, meta)
             if imdb_resp:
                 results.append(imdb_resp)
-        search_resp = self._make_tvmaze_request("https://api.tvmaze.com/search/shows", {"q": filename}, meta)
-        if search_resp:
-            if isinstance(search_resp, list):
-                results.extend([each['show'] for each in search_resp if 'show' in each])
-            else:
-                results.append(search_resp)
+        # Fuzzy title search is a last resort: results[0] is auto-selected with no
+        # confidence scoring, so never let it compete with an authoritative ID match.
+        if not results:
+            search_resp = self._make_tvmaze_request("https://api.tvmaze.com/search/shows", {"q": filename}, meta)
+            if search_resp:
+                if isinstance(search_resp, list):
+                    results.extend([each['show'] for each in search_resp if 'show' in each])
+                else:
+                    results.append(search_resp)
 
         if year not in (None, ''):
             results = [show for show in results if str(show.get('premiered', '')).startswith(str(year))]
