@@ -679,8 +679,11 @@ class Prep():
             meta = await self.imdb_other_meta(meta)
         else:
             meta = await self.tmdb_other_meta(meta)
-        # Search tvmaze
-        meta['tvmaze_id'], meta['imdb_id'], meta['tvdb_id'] = await self.search_tvmaze(filename, meta['search_year'], meta.get('imdb_id', '0'), meta.get('tvdb_id', 0), meta)
+        # Search tvmaze (TVmaze indexes TV only, so a movie can only ever get a false match)
+        if meta['category'] == "TV":
+            meta['tvmaze_id'], meta['imdb_id'], meta['tvdb_id'] = await self.search_tvmaze(filename, meta['search_year'], meta.get('imdb_id', '0'), meta.get('tvdb_id', 0), meta)
+        else:
+            meta['tvmaze_id'] = 0
         # If no imdb, search for it
         if meta.get('imdb_id', None) is None:
             meta['imdb_id'] = await self.search_imdb(filename, meta['search_year'])
