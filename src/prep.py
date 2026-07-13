@@ -4278,6 +4278,11 @@ class Prep():
             resp = requests.get(url, params=params)
             if resp.ok:
                 return resp.json()
+            elif resp.status_code == 404:
+                # TVmaze documents 404 as "no match" for lookups, not a failure
+                if meta['debug']:
+                    print(f"No TVmaze match for {url} with params: {params}")
+                return None
             else:
                 print(f"HTTP Request failed with status code: {resp.status_code}, response: {resp.text}")
                 return None
