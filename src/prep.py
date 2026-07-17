@@ -1282,7 +1282,7 @@ class Prep():
                             pool.imap_unordered(self.capture_disc_task, capture_tasks),
                             total=len(capture_tasks),
                             desc="Capturing Screenshots",
-                            ascii=True,
+                            ascii=" #",
                             dynamic_ncols=False
                         )
                     )
@@ -1306,7 +1306,7 @@ class Prep():
                             pool.imap_unordered(self.optimize_image_task, optimize_tasks),
                             total=len(optimize_tasks),
                             desc="Optimizing Images",
-                            ascii=True,
+                            ascii=" #",
                             dynamic_ncols=False
                         )
                     )
@@ -1459,7 +1459,7 @@ class Prep():
 
         with get_context("spawn").Pool(processes=min(num_screens + 1, task_limit)) as pool:
             try:
-                results = list(tqdm(pool.imap_unordered(self.capture_dvd_screenshot, tasks), total=len(tasks), desc="Capturing Screenshots", ascii=True, dynamic_ncols=False))
+                results = list(tqdm(pool.imap_unordered(self.capture_dvd_screenshot, tasks), total=len(tasks), desc="Capturing Screenshots", ascii=" #", dynamic_ncols=False))
             finally:
                 pool.close()
                 pool.join()
@@ -1492,7 +1492,7 @@ class Prep():
                         pool.imap_unordered(self.optimize_image_task, optimize_tasks),
                         total=len(optimize_tasks),
                         desc="Optimizing Images",
-                        ascii=True,
+                        ascii=" #",
                         dynamic_ncols=False
                     )
                 )
@@ -1664,7 +1664,7 @@ class Prep():
                 console.print("[yellow]All screenshots already exist. Skipping capture process.")
             else:
                 if use_tqdm():
-                    with tqdm(total=len(capture_tasks), desc="Capturing Screenshots", ascii=True, dynamic_ncols=False) as pbar:
+                    with tqdm(total=len(capture_tasks), desc="Capturing Screenshots", ascii=" #", dynamic_ncols=False) as pbar:
                         with get_context("spawn").Pool(processes=min(len(capture_tasks), task_limit)) as pool:
                             try:
                                 for result in pool.imap_unordered(self.capture_screenshot, capture_tasks):
@@ -1695,7 +1695,7 @@ class Prep():
         optimize_results = []
         if optimize_tasks:
             if use_tqdm():
-                with tqdm(total=len(optimize_tasks), desc="Optimizing Images", ascii=True, dynamic_ncols=False) as pbar:
+                with tqdm(total=len(optimize_tasks), desc="Optimizing Images", ascii=" #", dynamic_ncols=False) as pbar:
                     with get_context("spawn").Pool(processes=min(len(optimize_tasks), task_limit)) as pool:
                         try:
                             for result in pool.imap_unordered(self.optimize_image_task, optimize_tasks):
@@ -3244,7 +3244,7 @@ class Prep():
                                 pool.imap_unordered(self.upload_image_task, upload_tasks),
                                 total=len(upload_tasks),
                                 desc=f"Uploading Images to {img_host}",
-                                ascii=True,
+                                ascii=" #",
                                 dynamic_ncols=False
                             )
                         )
