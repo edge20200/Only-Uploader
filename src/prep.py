@@ -679,8 +679,11 @@ class Prep():
             meta = await self.imdb_other_meta(meta)
         else:
             meta = await self.tmdb_other_meta(meta)
-        # Search tvmaze
-        meta['tvmaze_id'], meta['imdb_id'], meta['tvdb_id'] = await self.search_tvmaze(filename, meta['search_year'], meta.get('imdb_id', '0'), meta.get('tvdb_id', 0), meta)
+        # Search tvmaze (TVmaze indexes TV only, so a movie can only ever get a false match)
+        if meta['category'] == "TV":
+            meta['tvmaze_id'], meta['imdb_id'], meta['tvdb_id'] = await self.search_tvmaze(filename, meta['search_year'], meta.get('imdb_id', '0'), meta.get('tvdb_id', 0), meta)
+        else:
+            meta['tvmaze_id'] = 0
         # If no imdb, search for it
         if meta.get('imdb_id', None) is None:
             meta['imdb_id'] = await self.search_imdb(filename, meta['search_year'])
@@ -3942,11 +3945,11 @@ class Prep():
             generic.write(f"{res} / {meta['type']}{tag}\n\n")
             generic.write(f"Category: {meta['category']}\n")
             generic.write(f"TMDB: https://www.themoviedb.org/{meta['category'].lower()}/{meta['tmdb']}\n")
-            if meta['imdb_id'] != "0":
+            if int(meta['imdb_id']) != 0:
                 generic.write(f"IMDb: https://www.imdb.com/title/tt{meta['imdb_id']}\n")
-            if meta['tvdb_id'] != "0":
+            if int(meta['tvdb_id']) != 0:
                 generic.write(f"TVDB: https://www.thetvdb.com/?id={meta['tvdb_id']}&tab=series\n")
-            if meta['tvmaze_id'] != "0":
+            if int(meta['tvmaze_id']) != 0:
                 generic.write(f"TVMaze: https://www.tvmaze.com/shows/{meta['tvmaze_id']}\n")
             poster_img = f"{meta['base_dir']}/tmp/{meta['uuid']}/POSTER.png"
             if meta.get('poster', None) not in ['', None] and not os.path.exists(poster_img):
@@ -4198,16 +4201,19 @@ class Prep():
             tvdb_resp = self._make_tvmaze_request("https://api.tvmaze.com/lookup/shows", {"thetvdb": tvdbID}, meta)
             if tvdb_resp:
                 results.append(tvdb_resp)
-        if int(imdbID) != 0:
+        if not results and int(imdbID) != 0:
             imdb_resp = self._make_tvmaze_request("https://api.tvmaze.com/lookup/shows", {"imdb": f"tt{imdbID}"}, meta)
             if imdb_resp:
                 results.append(imdb_resp)
-        search_resp = self._make_tvmaze_request("https://api.tvmaze.com/search/shows", {"q": filename}, meta)
-        if search_resp:
-            if isinstance(search_resp, list):
-                results.extend([each['show'] for each in search_resp if 'show' in each])
-            else:
-                results.append(search_resp)
+        # Fuzzy title search is a last resort: results[0] is auto-selected with no
+        # confidence scoring, so never let it compete with an authoritative ID match.
+        if not results:
+            search_resp = self._make_tvmaze_request("https://api.tvmaze.com/search/shows", {"q": filename}, meta)
+            if search_resp:
+                if isinstance(search_resp, list):
+                    results.extend([each['show'] for each in search_resp if 'show' in each])
+                else:
+                    results.append(search_resp)
 
         if year not in (None, ''):
             results = [show for show in results if str(show.get('premiered', '')).startswith(str(year))]
@@ -4272,6 +4278,11 @@ class Prep():
             resp = requests.get(url, params=params)
             if resp.ok:
                 return resp.json()
+            elif resp.status_code == 404:
+                # TVmaze documents 404 as "no match" for lookups, not a failure
+                if meta['debug']:
+                    print(f"No TVmaze match for {url} with params: {params}")
+                return None
             else:
                 print(f"HTTP Request failed with status code: {resp.status_code}, response: {resp.text}")
                 return None
