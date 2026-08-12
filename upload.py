@@ -52,6 +52,9 @@ from src.trackers.HHD import HHD
 from src.trackers.DP import DP
 from src.trackers.MS import MS
 from src.trackers.IHD import IHD
+from src.trackers.PG import PG
+from src.trackers.ZNTH import ZNTH
+from src.trackers.RMC import RMC
 import json
 from pathlib import Path
 import asyncio
@@ -538,7 +541,7 @@ async def do_the_thing(base_dir):
         common = COMMON(config=config)
         api_trackers = [
             'ACM', 'AITHER', 'AL', 'BHD', 'BLU', 'CBR', 'FNP', 'HUNO', 'JPTV', 'LCD', 'LST', 'LT',
-            'OE', 'OTW', 'PSS', 'RF', 'R4E', 'SHRI', 'TIK', 'ULCX', 'UTP', 'YOINK', 'PTT', 'YUS', 'SP', 'LUME', 'STC', 'HHD', 'DP', 'MS', 'IHD'
+            'OE', 'OTW', 'PSS', 'RF', 'R4E', 'SHRI', 'TIK', 'ULCX', 'UTP', 'YOINK', 'PTT', 'YUS', 'SP', 'LUME', 'STC', 'HHD', 'DP', 'MS', 'IHD', 'PG', 'ZNTH', 'RMC'
         ]
         other_api_trackers = [
             'ANT', 'BHDTV', 'NBL', 'RTF', 'SN', 'SPD', 'TL', 'TVC'
@@ -552,7 +555,7 @@ async def do_the_thing(base_dir):
             'LST': LST, 'LT': LT, 'MTV': MTV, 'NBL': NBL, 'OE': OE, 'OTW': OTW, 'PSS': PSS, 'PTP': PTP, 'PTER': PTER,
             'R4E': R4E, 'RF': RF, 'RTF': RTF, 'SHRI': SHRI, 'SN': SN, 'SPD': SPD, 'THR': THR,
             'TIK': TIK, 'TL': TL, 'TVC': TVC, 'TTG': TTG, 'ULCX': ULCX, 'UTP': UTP, 'YOINK': YOINK, 'YUS': YUS, 'SP': SP, 'PTT': PTT, 'LUME': LUME, 'STC': STC,
-            'HHD': HHD, 'DP': DP, 'MS': MS, 'IHD': IHD,
+            'HHD': HHD, 'DP': DP, 'MS': MS, 'IHD': IHD, 'PG': PG, 'ZNTH': ZNTH, 'RMC': RMC,
         }
 
         tracker_capabilities = {
