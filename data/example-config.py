@@ -19,6 +19,8 @@ config = {
         "img_host_6": "lensdump",
         "img_host_7": "ptscreens",
         # Number of screenshots to capture
+        # One extra frame is taken and the smallest of them discarded, which
+        # usually drops a fade to black. You still end up with this many.
         "screens": "6",
         # Number of cutoff screenshots
         # If there are at least this many screenshots already, perhaps pulled from existing

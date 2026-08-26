@@ -64,6 +64,57 @@ except KeyboardInterrupt:
     exit()
 
 
+def screenshot_path(directory, filename, index):
+    return os.path.join(directory, f"{filename}-{index}.png")
+
+
+def existing_screenshot_indices(directory, filename):
+    """Return the sorted indices of the `<filename>-<i>.png` files present."""
+    pattern = re.compile(rf"^{re.escape(filename)}-(\d+)\.png$")
+    try:
+        names = os.listdir(directory)
+    except OSError:
+        return []
+
+    return sorted(int(match.group(1)) for match in map(pattern.match, names) if match)
+
+
+def renumber_screenshots(directory, filename):
+    """Close any gaps in the numbering, keeping the existing order.
+
+    Whether a screenshot still needs taking is decided by looking for
+    `<filename>-<i>.png` on disk, so the survivors have to be renumbered after the
+    smallest frame is dropped. Left alone, the hole reads as a single missing
+    screenshot on the next run and is silently refilled while the rest are reused.
+
+    Returns the screenshot paths, contiguously numbered from zero.
+    """
+    paths = []
+    for new_index, old_index in enumerate(existing_screenshot_indices(directory, filename)):
+        old_path = screenshot_path(directory, filename, old_index)
+        new_path = screenshot_path(directory, filename, new_index)
+        if old_path != new_path:
+            # Indices only ever move down, and everything below has already been
+            # moved, so the destination is free.
+            os.replace(old_path, new_path)
+        paths.append(new_path)
+    return paths
+
+
+def describe_capture_plan(reused, capturing):
+    """Describe what a capture run is about to do, from the user's point of view."""
+    def plural(count):
+        return "screenshot" if count == 1 else "screenshots"
+
+    if reused and capturing:
+        return f"Reusing {reused} existing {plural(reused)}, capturing {capturing} new {plural(capturing)}"
+    if reused:
+        return f"Reusing {reused} existing {plural(reused)}, no new screenshots needed"
+    if capturing:
+        return f"Capturing {capturing} {plural(capturing)}"
+    return "No screenshots needed"
+
+
 class Prep():
     """
     Prepare for upload:
@@ -1634,64 +1685,73 @@ class Prep():
             return
 
         loglevel = 'verbose' if meta.get('ffdebug', False) else 'quiet'
-        os.chdir(f"{base_dir}/tmp/{folder_id}")
-
-        # The capture loop below reads num_screens + 1 times
-        ss_times = [int(frame) / frame_rate for frame in manual_frames] if manual_frames else []
-        ss_times = self.valid_ss_time(ss_times, num_screens + 1, length)
+        screens_dir = os.path.abspath(f"{base_dir}/tmp/{folder_id}")
+        os.chdir(screens_dir)
 
         capture_tasks = []
         capture_results = []
         task_limit = int(meta.get('task_limit', os.cpu_count()))
+        retake = meta.get('retake', False)
 
-        existing_images = 0
-        for i in range(num_screens):
-            image_path = os.path.abspath(f"{base_dir}/tmp/{folder_id}/{filename}-{i}.png")
-            if os.path.exists(image_path) and not meta.get('retake', False):
-                existing_images += 1
+        # Screenshots are counted by filename, so close any gap left by an older
+        # run before counting - otherwise it reads as a missing screenshot.
+        renumber_screenshots(screens_dir, filename)
+        existing_images = 0 if retake else min(len(existing_screenshot_indices(screens_dir, filename)), num_screens)
+        new_screens = num_screens - existing_images
 
-        if existing_images == num_screens and not meta.get('retake', False):
-            console.print("[yellow]The correct number of screenshots already exists. Skipping capture process.")
-        else:
-            for i in range(num_screens + 1):
-                image_path = os.path.abspath(f"{base_dir}/tmp/{folder_id}/{filename}-{i}.png")
-                if not os.path.exists(image_path) or meta.get('retake', False):
-                    capture_tasks.append((path, ss_times[i], image_path, width, height, w_sar, h_sar, loglevel))
-                elif meta['debug']:
-                    console.print(f"[yellow]Skipping existing screenshot: {image_path}")
+        # The extra frame is only worth taking for a full set; topping one up
+        # captures exactly what is missing, so the count reported is honest.
+        capture_extra = new_screens == num_screens and new_screens > 0
+        console.print(f"[yellow]{describe_capture_plan(existing_images, new_screens)}")
 
-            if not capture_tasks:
-                console.print("[yellow]All screenshots already exist. Skipping capture process.")
-            else:
-                if use_tqdm():
-                    with tqdm(total=len(capture_tasks), desc="Capturing Screenshots", ascii=" #", dynamic_ncols=False) as pbar:
-                        with get_context("spawn").Pool(processes=min(len(capture_tasks), task_limit)) as pool:
-                            try:
-                                for result in pool.imap_unordered(self.capture_screenshot, capture_tasks):
-                                    capture_results.append(result)
-                                    pbar.update(1)
-                            finally:
-                                pool.close()
-                                pool.join()
-                else:
-                    console.print("[blue]Non-TTY environment detected. Progress bar disabled.")
+        if new_screens > 0:
+            ss_times = [int(frame) / frame_rate for frame in manual_frames] if manual_frames else []
+            ss_times = self.valid_ss_time(ss_times, new_screens + (1 if capture_extra else 0), length)
+
+            for i, ss_time in enumerate(ss_times):
+                image_path = screenshot_path(screens_dir, filename, existing_images + i)
+                capture_tasks.append((path, ss_time, image_path, width, height, w_sar, h_sar, loglevel))
+
+            if use_tqdm():
+                with tqdm(total=len(capture_tasks), desc="Capturing Screenshots", ascii=" #", dynamic_ncols=False) as pbar:
                     with get_context("spawn").Pool(processes=min(len(capture_tasks), task_limit)) as pool:
                         try:
-                            for i, result in enumerate(pool.imap_unordered(self.capture_screenshot, capture_tasks), 1):
+                            for result in pool.imap_unordered(self.capture_screenshot, capture_tasks):
                                 capture_results.append(result)
-                                console.print(f"Processed {i}/{len(capture_tasks)} screenshots")
+                                pbar.update(1)
                         finally:
                             pool.close()
                             pool.join()
+            else:
+                console.print("[blue]Non-TTY environment detected. Progress bar disabled.")
+                with get_context("spawn").Pool(processes=min(len(capture_tasks), task_limit)) as pool:
+                    try:
+                        for i, result in enumerate(pool.imap_unordered(self.capture_screenshot, capture_tasks), 1):
+                            capture_results.append(result)
+                            console.print(f"Processed {i}/{len(capture_tasks)} screenshots")
+                    finally:
+                        pool.close()
+                        pool.join()
 
-                if capture_results and (len(capture_results) + existing_images) > num_screens and not force_screenshots:
-                    smallest = min(capture_results, key=os.path.getsize)
-                    if meta['debug']:
-                        console.print(f"[yellow]Removing smallest image: {smallest} ({os.path.getsize(smallest)} bytes)[/yellow]")
-                    os.remove(smallest)
-                    capture_results.remove(smallest)
+            captured = []
+            for result in capture_results:
+                if os.path.isfile(result):
+                    captured.append(result)
+                else:
+                    # capture_screenshot reports its failures as strings
+                    console.print(f"[red]{result}")
 
-        optimize_tasks = [(result, self.config) for result in capture_results if "Error" not in result]
+            if capture_extra and len(captured) > new_screens:
+                smallest = min(captured, key=os.path.getsize)
+                if meta['debug']:
+                    console.print(f"[yellow]Removing smallest image: {smallest} ({os.path.getsize(smallest)} bytes)[/yellow]")
+                os.remove(smallest)
+
+            # The dropped frame, or a failed capture, leaves a hole - close it and
+            # pick the new screenshots back up under the names they now have.
+            capture_results = renumber_screenshots(screens_dir, filename)[existing_images:]
+
+        optimize_tasks = [(result, self.config) for result in capture_results]
         optimize_results = []
         if optimize_tasks:
             if use_tqdm():
