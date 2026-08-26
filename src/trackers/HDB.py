@@ -209,10 +209,10 @@ class HDB():
         for each in (cat_id, codec_id, medium_id):
             if each == "EXIT":
                 console.print("[bold red]Something didn't map correctly, or this content is not allowed on HDB")
-                return
+                return False
         if "Dual-Audio" in meta['audio'] and meta['is_disc'] not in ("BDMV", "HDDVD", "DVD"):
             console.print("[bold red]Dual-Audio Encodes are not allowed")
-            return
+            return False
 
         # Download new .torrent from site
         hdb_desc = open(f"{meta['base_dir']}/tmp/{meta['uuid']}/[{self.tracker}]DESCRIPTION.txt", 'r', encoding='utf-8').read()
@@ -315,7 +315,7 @@ class HDB():
                         console.print("\n\n")
                         console.print(up.text)
                         raise UploadException(f"Upload to HDB Failed: result URL {up.url} ({up.status_code}) was not expected", 'red')  # noqa F405
-        return
+        return True
 
     async def search_existing(self, meta, disctype):
         dupes = []

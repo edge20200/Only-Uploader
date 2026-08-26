@@ -6,6 +6,7 @@ import platform
 
 from src.trackers.COMMON import COMMON
 from src.console import console
+from src.uploadresult import unit3d_upload_response
 
 
 class STC():
@@ -86,32 +87,33 @@ class STC():
             'api_token': self.config['TRACKERS'][self.tracker]['api_key'].strip()
         }
 
+        upload_accepted = False
         if meta['debug'] is False:
             response = requests.post(url=self.upload_url, files=files, data=data, headers=headers, params=params)
             try:
-                response_json = response.json()
-                console.print(response_json)
-                
-                # 🔥 Download the torrent file after upload
-                if "data" in response_json and response_json["data"]:
+                result = unit3d_upload_response(response, self.tracker)
+                upload_accepted = result.accepted
+
+                # Download the torrent the tracker built for us
+                if result.download_url:
                     await common.add_tracker_torrent(
                         meta,
                         self.tracker,
                         self.source_flag,
                         self.config['TRACKERS'][self.tracker].get('announce_url'),
-                        "https://skipthecommercials.xyz/torrents/" + str(response_json["data"]),
+                        "https://skipthecommercials.xyz/torrents/" + str(result.download_url),
                         headers=headers,
                         params=params,
-                        downurl=response_json["data"]
+                        downurl=result.download_url
                     )
             except Exception:
                 console.print("It may have uploaded, go check")
-                open_torrent.close()
-                return
         else:
             console.print("[cyan]Request Data:")
             console.print(data)
+            upload_accepted = True
         open_torrent.close()
+        return upload_accepted
 
     async def edit_name(self, meta):
         stc_name = meta.get('name')

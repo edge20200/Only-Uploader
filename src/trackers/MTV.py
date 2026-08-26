@@ -43,7 +43,7 @@ class MTV():
     async def upload(self, meta, disctype):
         common = COMMON(config=self.config)
         cookiefile = os.path.abspath(f"{meta['base_dir']}/data/cookies/MTV.pkl")
-        await self.upload_with_retry(meta, cookiefile, common)
+        return await self.upload_with_retry(meta, cookiefile, common)
 
     async def upload_with_retry(self, meta, cookiefile, common, img_host_index=1):
         approved_image_hosts = ['imgbb', 'ptpimg', 'imgbox']
@@ -80,7 +80,7 @@ class MTV():
 
             if image_list is None:
                 console.print("[red]All image hosts failed. Please check your configuration.")
-                return
+                return False
 
         torrent_file_path = f"{meta['base_dir']}/tmp/{meta['uuid']}/[{self.tracker}]{meta['clean_name']}.torrent"
         if not os.path.exists(torrent_file_path):
@@ -165,13 +165,16 @@ class MTV():
             'submit': 'true',
         }
 
+        upload_accepted = False
         if not meta['debug']:
             with requests.Session() as session:
                 with open(cookiefile, 'rb') as cf:
                     session.cookies.update(pickle.load(cf))
                 response = session.post(url=self.upload_url, data=data, files=files)
                 try:
+                    # Landing on torrents.php is what says MTV took the upload.
                     if "torrents.php" in response.url:
+                        upload_accepted = True
                         console.print(response.url)
                     else:
                         if "authkey.php" in response.url:
@@ -186,7 +189,8 @@ class MTV():
         else:
             console.print("[cyan]Request Data:")
             console.print(data)
-        return
+            upload_accepted = True
+        return upload_accepted
 
     async def handle_image_upload(self, meta, img_host_index=1, approved_image_hosts=None, file=None):
         if approved_image_hosts is None:

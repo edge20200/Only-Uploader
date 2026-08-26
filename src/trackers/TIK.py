@@ -14,6 +14,7 @@ import bencodepy
 
 from src.trackers.COMMON import COMMON
 from src.console import console
+from src.uploadresult import unit3d_upload_response
 
 
 class TIK():
@@ -53,7 +54,7 @@ class TIK():
 
         if not meta['is_disc']:
             console.print("[red]Only disc-based content allowed at TIK")
-            return
+            return False
         elif meta['bdinfo'] is not None:
             mi_dump = None
             with open(f"{meta['base_dir']}/tmp/{meta['uuid']}/BD_SUMMARY_00.txt", 'r', encoding='utf-8') as bd_file:
@@ -126,19 +127,21 @@ class TIK():
             'api_token': self.config['TRACKERS'][self.tracker]['api_key'].strip()
         }
 
+        upload_accepted = False
         if meta['debug'] is False:
             response = requests.post(url=self.upload_url, files=files, data=data, headers=headers, params=params)
             console.print(data)
             console.print(f"TIK response: {response}")
             try:
-                console.print(response.json())
+                upload_accepted = unit3d_upload_response(response, self.tracker).accepted
             except Exception:
                 console.print("It may have uploaded, go check")
-                return
         else:
             console.print("[cyan]Request Data:")
             console.print(data)
+            upload_accepted = True
         open_torrent.close()
+        return upload_accepted
 
     def get_basename(self, meta):
         path = next(iter(meta['filelist']), meta['path'])

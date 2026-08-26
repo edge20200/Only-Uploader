@@ -376,7 +376,10 @@ class PTER():
                 console.print(data)
             else:
                 cookiefile = f"{meta['base_dir']}/data/cookies/PTER.txt"
-                if os.path.exists(cookiefile):
+                if not os.path.exists(cookiefile):
+                    console.print("[bold red]No PTER cookie file found, nothing was uploaded.")
+                    return False
+                else:
                     with requests.Session() as session:
                         session.cookies.update(await common.parseCookieFile(cookiefile))
                         up = session.post(url=url, data=data, files=files)
@@ -391,7 +394,7 @@ class PTER():
                             console.print(data)
                             console.print("\n\n")
                             raise UploadException(f"Upload to Pter Failed: result URL {up.url} ({up.status_code}) was not expected", 'red')  # noqa #F405
-        return
+        return True
 
     async def download_new_torrent(self, id, torrent_path):
         download_url = f"https://pterclub.com/download.php?id={id}&passkey={self.passkey}"

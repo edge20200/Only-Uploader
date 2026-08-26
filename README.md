@@ -67,5 +67,8 @@ A simple tool to take the work out of uploading.
   `python3 upload.py /downloads/path/to/content --args`
   
   Args are OPTIONAL, for a list of acceptable args, pass `--help`
+
+  `upload.py` exits `0` when every tracker it uploaded to accepted the upload, and
+  `1` if any tracker turned one down, so it can be driven from a script.
 ## **Docker Usage:**
   Visit our wonderful [docker usage wiki page](https://github.com/edge20200/Only-Uploader/wiki/Docker)

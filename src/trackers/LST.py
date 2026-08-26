@@ -10,6 +10,7 @@ import glob
 
 from src.trackers.COMMON import COMMON
 from src.console import console
+from src.uploadresult import unit3d_upload_response
 
 
 class LST():
@@ -162,31 +163,33 @@ class LST():
             'api_token': self.config['TRACKERS'][self.tracker]['api_key'].strip()
         }
 
+        upload_accepted = False
         if meta['debug'] is False:
             response = requests.post(url=self.upload_url, files=files, data=data, headers=headers, params=params)
             try:
-                resp_json = response.json()
-                console.print(resp_json)
+                result = unit3d_upload_response(response, self.tracker)
+                upload_accepted = result.accepted
 
-                # 🔥 Download the torrent file after upload
-                if "data" in resp_json and resp_json["data"]:
+                # Download the torrent the tracker built for us
+                if result.download_url:
                     await common.add_tracker_torrent(
                         meta,
                         self.tracker,
                         self.source_flag,
                         self.config['TRACKERS'][self.tracker].get('announce_url'),
-                        "https://lst.gg/torrents/" + str(resp_json["data"]),
+                        "https://lst.gg/torrents/" + str(result.download_url),
                         headers=headers,
                         params=params,
-                        downurl=resp_json["data"]
+                        downurl=result.download_url
                     )
             except Exception as e:
                 console.print(f"[red]Error while uploading or downloading torrent: {e}[/red]")
-                return
         else:
             console.print("[cyan]Request Data:")
             console.print(data)
+            upload_accepted = True
         open_torrent.close()
+        return upload_accepted
 
     async def edit_name(self, meta):
         lst_name = meta['name']

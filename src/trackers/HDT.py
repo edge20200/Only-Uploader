@@ -119,7 +119,7 @@ class HDT():
                 if hdt_name_manually == "":
                     console.print('No proper name given')
                     console.print("Aborting...")
-                    return
+                    return False
                 else:
                     hdt_name = hdt_name_manually
 
@@ -217,7 +217,7 @@ class HDT():
                     console.print("Response Data (full):", style="dim")
                     console.print(up.text)
                     raise UploadException(f"Upload to HDT Failed: result URL {up.url} ({up.status_code}) was not expected", 'red')  # noqa F405
-        return
+        return True
 
     async def search_existing(self, meta, disctype):
         dupes = []

@@ -35,7 +35,7 @@ class BHD():
 
     async def upload(self, meta, disctype):
         common = COMMON(config=self.config)
-        await self.upload_with_retry(meta, common)
+        return await self.upload_with_retry(meta, common)
 
     async def upload_with_retry(self, meta, common, img_host_index=1):
         url_host_mapping = {
@@ -82,7 +82,7 @@ class BHD():
 
             if image_list is None:
                 console.print("[red]All image hosts failed. Please check your configuration.")
-                return
+                return False
 
         common = COMMON(config=self.config)
         await common.edit_torrent(meta, self.tracker, self.source_flag)
@@ -153,6 +153,7 @@ class BHD():
         }
 
         url = self.upload_url + self.config['TRACKERS'][self.tracker]['api_key'].strip()
+        upload_accepted = False
         if meta['debug'] is False:
             response = requests.post(url=url, files=files, data=data, headers=headers)
             try:
@@ -164,15 +165,20 @@ class BHD():
                         data['imdb_id'] = 1
                         response = requests.post(url=url, files=files, data=data, headers=headers)
                         response = response.json()
-                    elif response['satus_message'].startswith('Invalid name value'):
+                    elif response['status_message'].startswith('Invalid name value'):
                         console.print(f"[bold yellow]Submitted Name: {bhd_name}")
                 console.print(response)
+                # BHD reports the outcome as status_code: 1 accepted, 0 rejected.
+                upload_accepted = int(response.get('status_code', 0)) != 0
+                if not upload_accepted:
+                    console.print(f"[bold red]BHD rejected the upload: {response.get('status_message', 'no reason given')}[/bold red]")
             except Exception:
                 console.print("It may have uploaded, go check")
-                return
         else:
             console.print("[cyan]Request Data:")
             console.print(data)
+            upload_accepted = True
+        return upload_accepted
 
     async def handle_image_upload(self, meta, img_host_index=1, approved_image_hosts=None, file=None):
         if approved_image_hosts is None:
