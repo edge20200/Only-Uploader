@@ -94,6 +94,28 @@ client = Clients(config=config)
 parser = Args(config)
 
 
+def cleanup_release_cache(base_dir, uuid):
+    """Remove the cached prep material of a single release.
+
+    Returns the removed path, or None when there was nothing cached. Raises
+    ValueError if the release id does not resolve inside {base_dir}/tmp, so a
+    scoped delete can never fall back to the parent.
+    """
+    if uuid is None or not str(uuid).strip():
+        raise ValueError("no release id is set")
+
+    tmp_dir = os.path.realpath(os.path.join(base_dir, "tmp"))
+    release_dir = os.path.realpath(os.path.join(tmp_dir, str(uuid)))
+    if release_dir == tmp_dir or os.path.commonpath([tmp_dir, release_dir]) != tmp_dir:
+        raise ValueError(f"'{uuid}' does not resolve to a directory inside {tmp_dir}")
+
+    if not os.path.isdir(release_dir):
+        return None
+
+    shutil.rmtree(release_dir)
+    return release_dir
+
+
 def get_log_file(base_dir, queue_name):
     """
     Returns the path to the log file for the given base directory and queue name.
@@ -850,6 +872,18 @@ async def do_the_thing(base_dir):
                             await client.add_to_client(meta, "PTP")
                     except Exception:
                         console.print(traceback.format_exc())
+
+        # --cleanup empties the whole tmp tree, so it already covers the scoped flag
+        if meta.get('cleanup_last') and not meta.get('cleanup'):
+            try:
+                removed = cleanup_release_cache(base_dir, meta.get('uuid'))
+            except ValueError as e:
+                console.print(f"[bold red]Refused to clean up cached prep material: {e}")
+            else:
+                if removed is None:
+                    console.print(f"[yellow]No cached prep material found for {meta.get('uuid')}")
+                else:
+                    console.print(f"[bold green]Successfully removed cached prep material for {meta['uuid']}")
 
         if meta.get('queue') is not None:
             processed_files_count += 1
