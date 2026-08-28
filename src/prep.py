@@ -2458,6 +2458,9 @@ class Prep():
                 elif type in ('ENCODE', 'REMUX'):
                     source = "BluRay"
             if is_disc == "DVD" or source in ("DVD", "dvd"):
+                # Seeded so the `finally` below cannot hit an unbound name when neither
+                # MediaInfo nor guessit yields a TV standard.
+                system = ""
                 try:
                     if is_disc == "DVD":
                         mediainfo = MediaInfo.parse(f"{meta['discs'][0]['path']}/VTS_{meta['discs'][0]['main_set'][0][:2]}_0.IFO")
@@ -2475,6 +2478,8 @@ class Prep():
                             system = "PAL"
                         elif "NTSC" in other:
                             system = "NTSC"
+                        else:
+                            system = ""
                     except Exception:
                         system = ""
                 finally:
@@ -2495,16 +2500,28 @@ class Prep():
                 source = "Web"
             if source == "Ultra HDTV":
                 source = "UHDTV"
-            if type == "DVDRIP":
-                if resolution in [540, 576]:
-                    source = "PAL"
-                else:
-                    source = "NTSC"
+            if type == "DVDRIP" and source not in ("PAL", "NTSC"):
+                # Only guess when the source carried no PAL/NTSC marker of its own -
+                # the DVD branch above already honours MediaInfo and the filename.
+                source = self.tv_standard_from_resolution(resolution)
         except Exception:
             console.print(traceback.format_exc())
             source = "BluRay"
 
         return source, type
+
+    @staticmethod
+    def tv_standard_from_resolution(resolution):
+        """Last-resort PAL/NTSC guess from frame height for a DVD source.
+
+        PAL runs 576 (or 540) lines, NTSC 480. `resolution` is a string such as
+        "576p"/"480i", so it is parsed rather than compared to integers.
+        Defaults to NTSC when the height is unknown or not a DVD height.
+        """
+        height = re.match(r"(\d+)", str(resolution or ""))
+        if height and int(height.group(1)) in (540, 576):
+            return "PAL"
+        return "NTSC"
 
     def get_uhd(self, type, guess, resolution, path):
         try:
@@ -3428,7 +3445,7 @@ class Prep():
                 name = f"{title} {alt_title} {year} {edition} {repack} {resolution} {source} {audio} {video_encode}"
                 potential_missing = []
             elif type == "DVDRIP":
-                name = f"{title} {alt_title} {year} {source} {video_encode} DVDRip {audio}"
+                name = f"{title} {alt_title} {year} {edition} {repack} {source} {video_encode} DVDRip {audio}"
                 potential_missing = []
         elif meta['category'] == "TV":  # TV SPECIFIC
             if type == "DISC":  # Disk
@@ -3460,7 +3477,7 @@ class Prep():
                 name = f"{title} {year} {alt_title} {season}{episode} {episode_title} {part} {edition} {repack} {resolution} {source} {audio} {video_encode}"
                 potential_missing = []
             elif type == "DVDRIP":
-                name = f"{title} {alt_title} {season} {source} DVDRip {video_encode}"
+                name = f"{title} {alt_title} {season}{episode} {edition} {repack} {source} DVDRip {video_encode}"
                 potential_missing = []
 
         try:
