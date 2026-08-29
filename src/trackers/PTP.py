@@ -370,7 +370,7 @@ class PTP():
 
     def get_type(self, imdb_info, meta):
         ptpType = None
-        if imdb_info['type'] is not None:
+        if imdb_info.get('type') is not None:
             imdbType = imdb_info.get('type', 'movie').lower()
             if imdbType in ("movie", "tv movie"):
                 if int(imdb_info.get('runtime', '60')) >= 45 or int(imdb_info.get('runtime', '60')) == 0:
