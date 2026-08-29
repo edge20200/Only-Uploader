@@ -43,6 +43,39 @@ class PG:
             'Accept': 'application/json'
         }
 
+    def truncate_keywords(self, keywords, max_length=255):
+        """Truncate keywords to maximum length to satisfy API validation"""
+        if not keywords:
+            return ""
+        
+        # Convert to string if it's not already
+        keywords_str = str(keywords)
+        
+        # If it's a comma-separated string, try to truncate at whole keyword boundaries
+        if ',' in keywords_str:
+            keywords_list = [k.strip() for k in keywords_str.split(',')]
+            truncated_list = []
+            current_length = 0
+            
+            for keyword in keywords_list:
+                # Add comma and space if not the first keyword
+                if truncated_list:
+                    separator_length = 2  # ", " length
+                    if current_length + separator_length + len(keyword) > max_length:
+                        break
+                    truncated_list.append(keyword)
+                    current_length += separator_length + len(keyword)
+                else:
+                    if len(keyword) > max_length:
+                        break
+                    truncated_list.append(keyword)
+                    current_length += len(keyword)
+            
+            return ', '.join(truncated_list)
+        else:
+            # Simple truncation for non-comma-separated keywords
+            return keywords_str[:max_length]
+
     async def upload(self, meta, disctype):
         common = COMMON(config=self.config)
         await common.edit_torrent(meta, self.tracker, self.source_flag)
@@ -117,7 +150,7 @@ class PG:
             "anonymous": anon,
             "stream": meta["stream"],
             "sd": meta["sd"],
-            "keywords": meta["keywords"],
+            "keywords": self.truncate_keywords(meta["keywords"]),
             "personal_release": int(meta.get("personalrelease", False)),
             "internal": 0,
             "mod_queue_opt_in": modq,
@@ -153,17 +186,23 @@ class PG:
                 upload_accepted = result.accepted
 
                 # Download the torrent the tracker built for us
-                if result.download_url:
-                    await common.add_tracker_torrent(
-                        meta,
-                        self.tracker,
-                        self.source_flag,
-                        self.config["TRACKERS"][self.tracker].get("announce_url"),
-                        "https://peergarden.org/torrents/" + str(result.download_url),
-                        headers=headers,
-                        params=params,
-                        downurl=result.download_url,
-                    )
+                if result.accepted and result.download_url:
+                    # Ensure download_url is a valid ID (not a dict containing errors)
+                    if isinstance(result.download_url, (int, str)) and not isinstance(result.download_url, dict):
+                        await common.add_tracker_torrent(
+                            meta,
+                            self.tracker,
+                            self.source_flag,
+                            self.config["TRACKERS"][self.tracker].get("announce_url"),
+                            "https://peergarden.org/torrents/" + str(result.download_url),
+                            headers=headers,
+                            params=params,
+                            downurl=result.download_url,
+                        )
+                    else:
+                        console.print("[yellow]Upload succeeded but received invalid torrent ID format[/yellow]")
+                elif not result.accepted:
+                    console.print(f"[red]Upload failed: {result.message}[/red]")
             except Exception as e:
                 console.print(
                     f"[red]Error while uploading or downloading torrent: {e}[/red]"
