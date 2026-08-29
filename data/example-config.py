@@ -66,6 +66,10 @@ config = {
         # Run an API search after upload to find the permalink and insert as comment in torrent
         # Needs a 5 second wait to ensure the API is updated
         "get_permalink": False,
+        # What to do when a cached BASE.torrent no longer matches the content on disk
+        # (file sizes or modification times changed since it was created)
+        # "rehash" (default) creates a new .torrent, "abort" stops the upload instead
+        "stale_torrent_cache": "rehash",
     },
     "TRACKERS": {
         # Which trackers do you want to upload to?

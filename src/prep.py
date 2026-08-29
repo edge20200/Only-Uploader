@@ -11,6 +11,7 @@ from src.trackers.HDB import HDB  # noqa F401
 from src.trackers.TIK import TIK  # noqa F401
 from src.trackers.COMMON import COMMON
 from src.clients import Clients
+from src.torrentcache import clear_cache_sidecar, write_cache_sidecar
 from data.config import config
 
 try:
@@ -2955,9 +2956,17 @@ class Prep():
         torrent.validate_piece_size()
 
         # Generate and write the new torrent
+        torrent_file = f"{meta['base_dir']}/tmp/{meta['uuid']}/{output_filename}.torrent"
         torrent.generate(callback=self.torf_cb, interval=5)
-        torrent.write(f"{meta['base_dir']}/tmp/{meta['uuid']}/{output_filename}.torrent", overwrite=True)
+        torrent.write(torrent_file, overwrite=True)
         torrent.verify_filesize(path)
+
+        # Record what went into it, so a later run can tell whether this torrent still
+        # describes the content on disk without hashing it all over again.
+        try:
+            write_cache_sidecar(torrent_file, meta['path'], torrent.filepaths)
+        except (AttributeError, OSError) as e:
+            console.print(f"[yellow]Could not record torrent cache metadata: {e}")
 
         console.print("[bold green].torrent created", end="\r")
         return torrent
@@ -2989,7 +2998,10 @@ class Prep():
                     base_torrent.metainfo.pop(each, None)
             base_torrent.source = 'L4G'
             base_torrent.private = True
-            Torrent.copy(base_torrent).write(f"{base_dir}/tmp/{uuid}/BASE.torrent", overwrite=True)
+            base_path = f"{base_dir}/tmp/{uuid}/BASE.torrent"
+            Torrent.copy(base_torrent).write(base_path, overwrite=True)
+            # Any sidecar here belongs to the torrent we just replaced.
+            clear_cache_sidecar(base_path)
 
     """
     Upload Screenshots

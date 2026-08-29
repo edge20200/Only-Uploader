@@ -70,6 +70,7 @@ import re
 import aiohttp  # NEW IMPORT ADDED
 
 from src.console import console
+from src.torrentcache import resolve_stale_action, validate_cached_torrent
 from rich.markdown import Markdown
 from rich.style import Style
 
@@ -270,6 +271,34 @@ def display_queue(queue, base_dir, queue_name, save_to_log=True):
             console.print(f"[bold red]Failed to save queue to log file: {e}")
 
 
+def base_torrent_is_usable(meta, torrent_path, description):
+    """Check a .torrent we are about to reuse against the content on disk.
+
+    Reusing piece hashes that no longer describe the content publishes a torrent that
+    cannot verify, which can make a client move the file being seeded into its
+    incomplete directory. Returns False when the torrent needs to be re-hashed, and
+    exits when it is stale but re-hashing isn't possible or wanted.
+    """
+    status = validate_cached_torrent(torrent_path, meta['path'])
+    if status.fresh:
+        if meta.get('debug'):
+            console.log(f"{description} matches the content on disk (checked against the {status.source})")
+        return True
+
+    console.print(f"[bold yellow]{description} no longer matches the content on disk: {status.reason}")
+    action = resolve_stale_action(config['DEFAULT'].get('stale_torrent_cache'), can_rehash=not meta['nohash'])
+    if action == "rehash":
+        console.print("[bold yellow]Re-hashing so the upload describes what is actually on disk.")
+        return False
+
+    console.print("[bold red]Refusing to upload a .torrent that does not describe the content on disk.")
+    if meta['nohash']:
+        console.print("[bold red]--nohash was given, so a matching .torrent cannot be created. Drop it to re-hash.")
+    else:
+        console.print(f"[bold red]Re-run with --rehash, or delete {os.path.dirname(torrent_path)} and start again.")
+    sys.exit(1)
+
+
 async def process_meta(meta, base_dir):
     """Process the metadata for each queued path."""
 
@@ -307,13 +336,19 @@ async def process_meta(meta, base_dir):
             reuse_torrent = await client.find_existing_torrent(meta)
             if reuse_torrent is not None:
                 prep.create_base_from_existing_torrent(reuse_torrent, meta['base_dir'], meta['uuid'])
+                # The client's copy can be just as stale as our own cache.
+                if not base_torrent_is_usable(meta, torrent_path, "The .torrent reused from your client"):
+                    reuse_torrent = None
 
         if meta['nohash'] is False and reuse_torrent is None:
             prep.create_torrent(meta, Path(meta['path']), "BASE")
         if meta['nohash']:
             meta['client'] = "none"
 
-    elif os.path.exists(torrent_path) and meta.get('rehash', False) is True and meta['nohash'] is False:
+    elif meta.get('rehash', False) is True and meta['nohash'] is False:
+        prep.create_torrent(meta, Path(meta['path']), "BASE")
+
+    elif not base_torrent_is_usable(meta, torrent_path, "The cached BASE.torrent"):
         prep.create_torrent(meta, Path(meta['path']), "BASE")
 
     if int(meta.get('randomized', 0)) >= 1:
