@@ -8,6 +8,7 @@ import bencodepy
 
 from src.trackers.COMMON import COMMON
 from src.console import console
+from src.uploadresult import unit3d_upload_response
 
 
 class UNIT3D_TEMPLATE():
@@ -139,17 +140,19 @@ class UNIT3D_TEMPLATE():
             'api_token': self.config['TRACKERS'][self.tracker]['api_key'].strip()
         }
 
+        upload_accepted = False
         if meta['debug'] is False:
             response = requests.post(url=self.upload_url, files=files, data=data, headers=headers, params=params)
             try:
-                console.print(response.json())
+                upload_accepted = unit3d_upload_response(response, self.tracker).accepted
             except Exception:
                 console.print("It may have uploaded, go check")
-                return
         else:
             console.print("[cyan]Request Data:")
             console.print(data)
+            upload_accepted = True
         open_torrent.close()
+        return upload_accepted
 
     async def search_existing(self, meta, disctype):
         dupes = []

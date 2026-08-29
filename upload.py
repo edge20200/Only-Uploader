@@ -3,6 +3,7 @@
 import requests
 from src.args import Args
 from src.clients import Clients
+from src.uploadresult import upload_succeeded
 from src.trackers.COMMON import COMMON
 from src.trackers.HUNO import HUNO
 from src.trackers.BLU import BLU
@@ -355,6 +356,30 @@ async def process_meta(meta, base_dir):
         prep.create_random_torrents(meta['base_dir'], meta['uuid'], meta['randomized'], meta['path'])
 
 
+def accepted_by_tracker(failed_uploads, tracker_name, meta, result):
+    """Report whether a tracker took the upload, remembering it when it did not.
+
+    A torrent the tracker rejected must not reach the client, and the run has
+    to end non-zero so whatever called us can tell the release was not
+    published.
+    """
+    if upload_succeeded(result):
+        return True
+    console.print(f"[bold red]{tracker_name} did not accept the upload - not adding it to the torrent client.[/bold red]")
+    failed_uploads.append((tracker_name, meta.get('name', meta.get('path', ''))))
+    return False
+
+
+def report_failed_uploads(failed_uploads):
+    """Summarise the uploads no tracker accepted and return a process exit code."""
+    if not failed_uploads:
+        return 0
+    console.print(f"[bold red]{len(failed_uploads)} upload(s) were not accepted:")
+    for tracker_name, name in failed_uploads:
+        console.print(f"[red]  - {tracker_name}: {name}")
+    return 1
+
+
 async def do_the_thing(base_dir):
     meta = {'base_dir': base_dir}
     paths = []
@@ -540,6 +565,7 @@ async def do_the_thing(base_dir):
             display_queue(queue, base_dir, queue_name, save_to_log=False)
 
     processed_files_count = 0
+    failed_uploads = []
     base_meta = {k: v for k, v in meta.items()}
     for path in queue:
         total_files = len(queue)
@@ -702,14 +728,15 @@ async def do_the_thing(base_dir):
 
                         # Proceed with upload if the meta is set to upload
                         if meta.get('upload', False):
-                            await tracker_class.upload(meta, disctype)
-                            perm = config['DEFAULT'].get('get_permalink', False)
-                            if perm:
-                                # need a wait so we don't race the api
-                                await asyncio.sleep(5)
-                                await tracker_class.search_torrent_page(meta, disctype)
-                                await asyncio.sleep(0.5)
-                            await client.add_to_client(meta, tracker_class.tracker)
+                            result = await tracker_class.upload(meta, disctype)
+                            if accepted_by_tracker(failed_uploads, tracker_class.tracker, meta, result):
+                                perm = config['DEFAULT'].get('get_permalink', False)
+                                if perm:
+                                    # need a wait so we don't race the api
+                                    await asyncio.sleep(5)
+                                    await tracker_class.search_torrent_page(meta, disctype)
+                                    await asyncio.sleep(0.5)
+                                await client.add_to_client(meta, tracker_class.tracker)
                     meta['skipping'] = None
 
             if tracker in other_api_trackers:
@@ -766,10 +793,11 @@ async def do_the_thing(base_dir):
                     if 'skipping' not in meta or meta['skipping'] is None:
                         # Proceed with upload if the meta is set to upload
                         if tracker == "TL" or meta.get('upload', False):
-                            await tracker_class.upload(meta, disctype)
-                            if tracker == 'SN':
-                                await asyncio.sleep(16)
-                            await client.add_to_client(meta, tracker_class.tracker)
+                            result = await tracker_class.upload(meta, disctype)
+                            if accepted_by_tracker(failed_uploads, tracker_class.tracker, meta, result):
+                                if tracker == 'SN':
+                                    await asyncio.sleep(16)
+                                await client.add_to_client(meta, tracker_class.tracker)
                     meta['skipping'] = None
 
             if tracker in http_trackers:
@@ -805,8 +833,9 @@ async def do_the_thing(base_dir):
 
                         meta = dupe_check(dupes, meta)
                         if meta['upload'] is True:
-                            await tracker_class.upload(meta, disctype)
-                            await client.add_to_client(meta, tracker_class.tracker)
+                            result = await tracker_class.upload(meta, disctype)
+                            if accepted_by_tracker(failed_uploads, tracker_class.tracker, meta, result):
+                                await client.add_to_client(meta, tracker_class.tracker)
 
             if tracker == "MANUAL":
                 if meta['unattended']:
@@ -859,10 +888,12 @@ async def do_the_thing(base_dir):
                             dupes = await common.filter_dupes(dupes, meta)
                             meta = dupe_check(dupes, meta)
                             if meta['upload'] is True:
-                                await thr.upload(session, meta, disctype)
-                                await client.add_to_client(meta, "THR")
+                                result = await thr.upload(session, meta, disctype)
+                                if accepted_by_tracker(failed_uploads, "THR", meta, result):
+                                    await client.add_to_client(meta, "THR")
                     except Exception:
                         console.print(traceback.format_exc())
+                        accepted_by_tracker(failed_uploads, "THR", meta, False)
 
             if tracker == "PTP":
                 if meta['unattended']:
@@ -902,11 +933,13 @@ async def do_the_thing(base_dir):
                             meta['imdb_info'] = await prep.get_imdb_info(meta['imdb_id'], meta)
                         if meta['upload'] is True:
                             ptpUrl, ptpData = await ptp.fill_upload_form(groupID, meta)
-                            await ptp.upload(meta, ptpUrl, ptpData, disctype)
-                            await asyncio.sleep(5)
-                            await client.add_to_client(meta, "PTP")
+                            result = await ptp.upload(meta, ptpUrl, ptpData, disctype)
+                            if accepted_by_tracker(failed_uploads, "PTP", meta, result):
+                                await asyncio.sleep(5)
+                                await client.add_to_client(meta, "PTP")
                     except Exception:
                         console.print(traceback.format_exc())
+                        accepted_by_tracker(failed_uploads, "PTP", meta, False)
 
         # --cleanup empties the whole tmp tree, so it already covers the scoped flag
         if meta.get('cleanup_last') and not meta.get('cleanup'):
@@ -926,6 +959,8 @@ async def do_the_thing(base_dir):
             if not meta['debug']:
                 if log_file:
                     save_processed_file(log_file, path)
+
+    return failed_uploads
 
 
 def get_confirmation(meta):
@@ -1305,6 +1340,9 @@ if __name__ == '__main__':
         sys.exit(1)
 
     try:
-        asyncio.run(do_the_thing(base_dir))  # Pass the correct base_dir value here
+        failed_uploads = asyncio.run(do_the_thing(base_dir))  # Pass the correct base_dir value here
     except (KeyboardInterrupt):
         console.print("[bold red]Program interrupted. Exiting.")
+        sys.exit(1)
+
+    sys.exit(report_failed_uploads(failed_uploads))

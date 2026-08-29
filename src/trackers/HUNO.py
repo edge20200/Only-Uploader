@@ -356,7 +356,7 @@ class HUNO():
         # Check if torrent file exists
         if not os.path.exists(torrent_path):
             console.print(f"[bold red]Torrent file not found: {torrent_path}[/bold red]")
-            return
+            return False
 
         console.print(f"[cyan]Using torrent file: {torrent_path}[/cyan]")
 
@@ -442,6 +442,7 @@ class HUNO():
         console.print(f"[cyan]Data: {data}[/cyan]")
         console.print(f"[cyan]Files: {list(files.keys())}[/cyan]")
 
+        upload_accepted = False
         if meta['debug'] is False:
             try:
                 response = requests.post(
@@ -456,6 +457,7 @@ class HUNO():
                 response_json = response.json()
 
                 if response_json.get('success'):
+                    upload_accepted = True
                     # Extract torrent ID from response
                     torrent_id = response_json['data']['torrent']['id']
                     torrent_url = f"https://hawke.uno/torrents/{torrent_id}"
@@ -492,12 +494,14 @@ class HUNO():
             console.print(data)
             console.print("[cyan]Files:")
             console.print(files)
+            upload_accepted = True
 
         # Close all open files
         open_torrent.close()
         for key, file in list(files.items()):
             if key != 'torrent':
                 file.close()
+        return upload_accepted
 
     def get_audio(self, meta):
         channels = meta.get('channels', "")

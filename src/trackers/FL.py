@@ -117,7 +117,7 @@ class FL():
                 if fl_name_manually == "":
                     console.print('No proper name given')
                     console.print("Aborting...")
-                    return
+                    return False
                 else:
                     fl_name = fl_name_manually
 
@@ -188,7 +188,7 @@ class FL():
                         console.print("\n\n")
                         console.print(up.text)
                         raise UploadException(f"Upload to FL Failed: result URL {up.url} ({up.status_code}) was not expected", 'red')  # noqa F405
-        return
+        return True
 
     async def search_existing(self, meta, disctype):
         dupes = []

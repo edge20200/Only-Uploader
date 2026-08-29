@@ -103,15 +103,21 @@ class TL():
             'User-Agent': f'Upload Assistant/2.2 ({platform.system()} {platform.release()})'
         }
 
+        upload_accepted = False
         if meta['debug'] is False:
             response = requests.post(url=self.upload_url, files=files, data=data, headers=headers)
-            if not response.text.isnumeric():
+            # TL answers with the new torrent id, or with an error message.
+            if response.text.isnumeric():
+                upload_accepted = True
+            else:
                 console.print(f'[red]{response.text}')
         else:
             console.print("[cyan]Request Data:")
             console.print(data)
+            upload_accepted = True
         open_torrent.close()
         open_desc.close()
+        return upload_accepted
 
     def get_name(self, meta):
         path = Path(meta['path'])

@@ -205,8 +205,9 @@ class TVC():
             'api_token': self.config['TRACKERS'][self.tracker]['api_key'].strip()
         }
         if 'upload_to_tvc' in locals() and upload_to_tvc is False:
-            return
+            return False
 
+        upload_accepted = False
         if meta['debug'] is False:
             response = requests.post(url=self.upload_url, files=files, data=data, headers=headers, params=params)
             try:
@@ -216,21 +217,26 @@ class TVC():
                 json_data = json.loads(response.text.strip('application/x-bittorrent\n'))
                 console.print(json_data)
 
-                # adding torrent link to torrent as comment
-                t_id = json_data['data'].split(".")[1].split("/")[3]
-                await common.add_tracker_torrent(meta, self.tracker, self.source_flag,
-                                                 self.config['TRACKERS'][self.tracker].get('announce_url'),
-                                                 "https://tvchaosuk.com/torrents/" + t_id)
+                if not json_data.get('success'):
+                    console.print(f"[bold red]TVC rejected the upload: {json_data.get('message', 'no reason given')}[/bold red]")
+                else:
+                    upload_accepted = True
+                    # adding torrent link to torrent as comment
+                    t_id = json_data['data'].split(".")[1].split("/")[3]
+                    await common.add_tracker_torrent(meta, self.tracker, self.source_flag,
+                                                     self.config['TRACKERS'][self.tracker].get('announce_url'),
+                                                     "https://tvchaosuk.com/torrents/" + t_id)
 
             except Exception:
                 console.print(traceback.print_exc())
                 console.print("[yellow]It may have uploaded, go check")
                 console.print(response.text.strip('application/x-bittorrent\n'))
-                return
         else:
             console.print("[cyan]Request Data:")
             console.print(data)
+            upload_accepted = True
         open_torrent.close()
+        return upload_accepted
 
     async def get_tmdb_data(self, meta):
         import tmdbsimple as tmdb

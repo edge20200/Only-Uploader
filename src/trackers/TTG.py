@@ -175,7 +175,7 @@ class TTG():
                         console.print("\n\n")
                         console.print(up.text)
                         raise UploadException(f"Upload to TTG Failed: result URL {up.url} ({up.status_code}) was not expected", 'red')  # noqa #F405
-        return
+        return True
 
     async def search_existing(self, meta, disctype):
         dupes = []

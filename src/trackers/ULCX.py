@@ -10,6 +10,7 @@ import glob
 
 from src.trackers.COMMON import COMMON
 from src.console import console
+from src.uploadresult import unit3d_upload_response
 
 
 class ULCX():
@@ -71,7 +72,7 @@ class ULCX():
         resolution_id = await self.get_res_id(meta['resolution'], meta['type'])
         if resolution_id is None:
             console.print("Resolution is below 720p; skipping.")
-            return
+            return False
         await common.unit3d_edit_desc(meta, self.tracker, self.signature, comparison=True)
         region_id = await common.unit3d_region_ids(meta.get('region'))
         distributor_id = await common.unit3d_distributor_ids(meta.get('distributor'))
@@ -141,17 +142,19 @@ class ULCX():
             'api_token': self.config['TRACKERS'][self.tracker]['api_key'].strip()
         }
 
+        upload_accepted = False
         if meta['debug'] is False:
             response = requests.post(url=self.upload_url, files=files, data=data, headers=headers, params=params)
             try:
-                console.print(response.json())
+                upload_accepted = unit3d_upload_response(response, self.tracker).accepted
             except Exception:
                 console.print("It may have uploaded, go check")
-                return
         else:
             console.print("[cyan]Request Data:")
             console.print(data)
+            upload_accepted = True
         open_torrent.close()
+        return upload_accepted
 
     async def search_existing(self, meta, disctype):
         if 'concert' in meta['keywords']:

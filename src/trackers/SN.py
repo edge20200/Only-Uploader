@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 import requests
 import asyncio
-import sys
 
 from src.trackers.COMMON import COMMON
 from src.console import console
@@ -93,24 +92,30 @@ class SN():
         }
 
         # Post request with error messages returned:
+        upload_accepted = False
         if meta['debug'] is False:
             response = requests.request("POST", url=self.upload_url, data=data, files=files)
-    
-        # Check if the response is actually JSON before parsing
+
+            # Check if the response is actually JSON before parsing
             if response.status_code == 200 and 'application/json' in response.headers.get('Content-Type', ''):
                 try:
                     resp_data = response.json()
                     if resp_data.get('success'):
+                        upload_accepted = True
                         console.print(resp_data)
                     else:
                         console.print("[red]Did not upload successfully")
                         console.print(resp_data)
-                        sys.exit(1) # Stop the script
                 except Exception:
                     console.print("[red]JSON parsing failed despite correct headers.")
             else:
                 console.print(f"[red]Server returned non-JSON response (Status: {response.status_code})")
-                console.print(f"Raw Response: {response.text[:500]}") # Print first 500 chars to see the error
+                console.print(f"Raw Response: {response.text[:500]}")  # Print first 500 chars to see the error
+        else:
+            console.print("[cyan]Request Data:")
+            console.print(data)
+            upload_accepted = True
+        return upload_accepted
 
     async def edit_desc(self, meta):
         base = open(f"{meta['base_dir']}/tmp/{meta['uuid']}/DESCRIPTION.txt", 'r', encoding='utf-8').read()

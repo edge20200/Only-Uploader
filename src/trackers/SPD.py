@@ -86,11 +86,16 @@ class SPD():
 
         headers = {'Authorization': 'Bearer ' + self.config['TRACKERS'][self.tracker]['api_key'].strip()}
 
+        upload_accepted = False
         if meta['debug'] is False:
             response = requests.request("POST", url=self.upload_url, json=data, headers=headers)
             try:
                 print(response.json())
                 # response = {'status': True, 'error': False, 'downloadUrl': '/api/torrent/383435/download', 'torrent': {'id': 383435, 'name': 'name-with-full-stops', 'slug': 'name-with-dashs', 'category_id': 3}}
+                if not response.json().get('status') or response.json().get('error'):
+                    console.print("[bold red]SPD did not accept the upload.[/bold red]")
+                    return False
+                upload_accepted = True
                 # downloading the torrent from site as it adds a tonne of different trackers and the source is different all the time.
                 try:
                     # torrent may not dl and may not provide error if machine is under load or network connection usage high.
@@ -110,10 +115,11 @@ class SPD():
             except Exception:
                 console.print(traceback.print_exc())
                 console.print("[yellow]Unable to Download torrent, try manually")
-                return
         else:
             console.print("[cyan]Request Data:")
             pprint(data)
+            upload_accepted = True
+        return upload_accepted
 
     async def get_cat_id(self, category_name):
         category_id = {

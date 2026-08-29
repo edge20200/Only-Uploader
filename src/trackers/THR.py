@@ -44,7 +44,7 @@ class THR():
                 if thr_name_manually == "":
                     console.print('No proper name given')
                     console.print("Aborting...")
-                    return
+                    return False
                 else:
                     thr_name = thr_name_manually
         torrent_name = re.sub(r"[^0-9a-zA-Z. '\-\[\]]+", " ", thr_name)
@@ -93,23 +93,28 @@ class THR():
             thr_upload_prompt = True
         else:
             thr_upload_prompt = cli_ui.ask_yes_no("send to takeupload.php?", default=False)
+        upload_accepted = False
         if thr_upload_prompt is True:
             await asyncio.sleep(0.5)
             response = session.post(url=url, files=files, data=payload, headers=headers)
             try:
                 if meta['debug']:
                     console.print(response.text)
+                # THR redirects to ...uploaded=1 only when it took the upload.
                 if response.url.endswith('uploaded=1'):
+                    upload_accepted = True
                     console.print(f'[green]Successfully Uploaded at: {response.url}')
-                # Check if actually uploaded
+                else:
+                    console.print(f'[bold red]THR did not accept the upload (landed on {response.url}).[/bold red]')
             except Exception:
                 if meta['debug']:
                     console.print(response.text)
                 console.print("It may have uploaded, go check")
-                return
         else:
             console.print("[cyan]Request Data:")
             console.print(payload)
+            upload_accepted = True
+        return upload_accepted
 
     async def get_cat_id(self, meta):
         if meta['category'] == "MOVIE":

@@ -150,11 +150,13 @@ class ANT():
             'User-Agent': f'Only-Uploader/1.0 ({platform.system()} {platform.release()})'
         }
 
+        upload_accepted = False
         try:
             if not meta['debug']:
                 response = requests.post(url=self.upload_url, files=files, data=data, headers=headers)
                 if response.status_code in [200, 201]:
                     response_data = response.json()
+                    upload_accepted = True
                 else:
                     response_data = {
                         "error": f"Unexpected status code: {response.status_code}",
@@ -164,8 +166,10 @@ class ANT():
             else:
                 console.print("[cyan]Request Data:")
                 console.print(data)
+                upload_accepted = True
         finally:
             open_torrent.close()
+        return upload_accepted
 
     async def edit_desc(self, meta):
         if meta.get('is_disc') == 'BDMV':

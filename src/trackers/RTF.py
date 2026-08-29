@@ -74,20 +74,28 @@ class RTF():
             'Authorization': self.config['TRACKERS'][self.tracker]['api_key'].strip(),
         }
 
+        upload_accepted = False
         if meta['debug'] is False:
             response = requests.post(url=self.upload_url, json=json_data, headers=headers)
             try:
-                console.print(response.json())
+                body = response.json()
+                console.print(body)
 
-                t_id = response.json()['torrent']['id']
-                await common.add_tracker_torrent(meta, self.tracker, self.source_flag, self.config['TRACKERS'][self.tracker].get('announce_url'), "https://retroflix.club/browse/t/" + str(t_id))
+                # A torrent id coming back is what says the upload was accepted.
+                t_id = body.get('torrent', {}).get('id') if isinstance(body, dict) else None
+                if t_id:
+                    upload_accepted = True
+                    await common.add_tracker_torrent(meta, self.tracker, self.source_flag, self.config['TRACKERS'][self.tracker].get('announce_url'), "https://retroflix.club/browse/t/" + str(t_id))
+                else:
+                    console.print("[bold red]RTF did not accept the upload: no torrent id in the response.[/bold red]")
 
             except Exception:
                 console.print("It may have uploaded, go check")
-                return
         else:
             console.print("[cyan]Request Data:")
             console.print(json_data)
+            upload_accepted = True
+        return upload_accepted
 
     async def search_existing(self, meta, disctype):
         disallowed_keywords = {'XXX', 'Erotic'}

@@ -87,11 +87,19 @@ class BHDTV():
             'format': 'json'
         }
 
+        upload_accepted = False
         if meta['debug'] is False:
             response = requests.post(url=self.upload_url, data=data, files=files)
             try:
                 # pprint(data)
-                console.print(response.json())
+                body = response.json()
+                console.print(body)
+                upload_accepted = bool(body.get('success', response.ok))
+                if not upload_accepted:
+                    console.print(f"[bold red]BHDTV rejected the upload: {body.get('message', 'no reason given')}[/bold red]")
+                # adding my announce url to torrent.
+                elif 'view' in body.get('data', {}):
+                    await common.add_tracker_torrent(meta, self.tracker, self.source_flag, self.config['TRACKERS']['BHDTV'].get('my_announce_url'), body['data']['view'])
             except Exception:
                 console.print("[cyan]It may have uploaded, go check")
                 # cprint(f"Request Data:", 'cyan')
@@ -100,14 +108,9 @@ class BHDTV():
         else:
             console.print("[cyan]Request Data:")
             pprint(data)
-        # # adding my anounce url to torrent.
-        if 'view' in response.json()['data']:
-            await common.add_tracker_torrent(meta, self.tracker, self.source_flag, self.config['TRACKERS']['BHDTV'].get('my_announce_url'), response.json()['data']['view'])
-        else:
-            await common.add_tracker_torrent(meta, self.tracker, self.source_flag,
-                                             self.config['TRACKERS']['BHDTV'].get('my_announce_url'),
-                                             "Torrent Did not upload")
+            upload_accepted = True
         open_torrent.close()
+        return upload_accepted
 
     async def get_cat_id(self, meta):
         category_id = '0'

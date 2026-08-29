@@ -61,23 +61,26 @@ class NBL():
             'ignoredupes': 'on'
         }
 
+        upload_accepted = False
         if meta['debug'] is False:
             response = requests.post(url=self.upload_url, files=files, data=data)
             try:
                 if response.ok:
+                    upload_accepted = True
                     response = response.json()
                     console.print(response.get('message', response))
                 else:
-                    console.print(response)
+                    console.print(f"[bold red]NBL rejected the upload (HTTP {response.status_code}).[/bold red]")
                     console.print(response.text)
             except Exception:
                 console.print_exception()
                 console.print("[bold yellow]It may have uploaded, go check")
-                return
         else:
             console.print("[cyan]Request Data:")
             console.print(data)
+            upload_accepted = True
         open_torrent.close()
+        return upload_accepted
 
     async def search_existing(self, meta, disctype):
         if meta['category'] != 'TV':

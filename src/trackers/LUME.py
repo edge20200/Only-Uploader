@@ -10,6 +10,7 @@ import requests
 from str2bool import str2bool
 
 from src.console import console
+from src.uploadresult import unit3d_upload_response
 from src.trackers.COMMON import COMMON
 
 
@@ -248,6 +249,7 @@ class LUME:
         if meta.get("category") == "TV":
             data["season_number"] = meta.get("season_int", "0")
             data["episode_number"] = meta.get("episode_int", "0")
+        upload_accepted = False
         if meta["debug"] is False:
             response = requests.post(
                 url=self.upload_url,
@@ -257,31 +259,32 @@ class LUME:
                 params=params,
             )
             try:
-                resp_json = response.json()
-                console.print(resp_json)
+                result = unit3d_upload_response(response, self.tracker)
+                upload_accepted = result.accepted
 
-                # 🔥 Download the torrent file after upload
-                if "data" in resp_json and resp_json["data"]:
+                # Download the torrent the tracker built for us
+                if result.download_url:
                     await common.add_tracker_torrent(
                         meta,
                         self.tracker,
                         self.source_flag,
                         self.config["TRACKERS"][self.tracker].get("announce_url"),
-                        "https://luminarr.me/torrents/" + str(resp_json["data"]),
+                        "https://luminarr.me/torrents/" + str(result.download_url),
                         headers=headers,
                         params=params,
-                        downurl=resp_json["data"],
+                        downurl=result.download_url,
                     )
             except Exception as e:
                 console.print(
                     f"[red]Error while uploading or downloading torrent: {e}[/red]"
                 )
                 console.print("It may have uploaded, go check")
-                return
         else:
             console.print("[cyan]Request Data:")
             console.print(data)
+            upload_accepted = True
         open_torrent.close()
+        return upload_accepted
 
     async def get_flag(self, meta, flag_name):
         config_flag = self.config["TRACKERS"][self.tracker].get(flag_name)
