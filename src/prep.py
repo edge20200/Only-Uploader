@@ -3793,7 +3793,7 @@ class Prep():
             'DPLY': 'DPLY', 'DPlay': 'DPLY', 'DRPO': 'DRPO', 'Discovery Plus': 'DSCP', 'DSKI': 'DSKI', 'Daisuki': 'DSKI',
             'DSNP': 'DSNP', 'Disney+': 'DSNP', 'DSNY': 'DSNY', 'Disney': 'DSNY', 'DTV': 'DTV', 'EPIX': 'EPIX', 'ePix': 'EPIX',
             'ESPN': 'ESPN', 'ESQ': 'ESQ', 'Esquire': 'ESQ', 'ETTV': 'ETTV', 'El Trece': 'ETTV', 'ETV': 'ETV', 'E!': 'ETV',
-            'FAM': 'FAM', 'Fandor': 'FANDOR', 'Facebook Watch': 'FBWatch', 'FJR': 'FJR', 'Family Jr': 'FJR', 'FMIO': 'FMIO',
+            'FAM': 'FAM', 'Fandor': 'FANDOR', 'FNDG': 'FNDG', 'Facebook Watch': 'FBWatch', 'FJR': 'FJR', 'Family Jr': 'FJR', 'FMIO': 'FMIO',
             'Filmio': 'FMIO', 'FOOD': 'FOOD', 'Food Network': 'FOOD', 'FOX': 'FOX', 'Fox': 'FOX', 'Fox Premium': 'FOXP',
             'UFC Fight Pass': 'FP', 'FPT': 'FPT', 'FREE': 'FREE', 'Freeform': 'FREE', 'FTV': 'FTV', 'FUNI': 'FUNI', 'FUNi': 'FUNI',
             'Foxtel': 'FXTL', 'FYI': 'FYI', 'FYI Network': 'FYI', 'GC': 'GC', 'NHL GameCenter': 'GC', 'GLBL': 'GLBL',
