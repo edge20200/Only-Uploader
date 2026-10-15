@@ -75,28 +75,15 @@ config = {
     },
     "TRACKERS": {
         # Which trackers do you want to upload to?
-        # Available tracker: ACM, AITHER, AL, ANT, BHD, BHDTV, BLU, CBR, DP, EHD, FNP, HDB, HDT, HHD, HP, HUNO, IHD, LCD, LST, LT, LUME, MTV, MS, NBL, OE, OTW, PSS, PTER, PTP, PTT, R4E, RF, RTF, SN, SPD, SP, STC, TH, THR, TIK, TL, ULCX, UTP, YOINK, YUS
+        # Available tracker: AITHER, ANT, BHD, BHDTV, BLU, CBR, DP, HDB, HDT, HHD, HUNO, IHD, LCD, LST, LT, LUME, MS, NBL, OE, OTW, PSS, PTER, PTP, PTT, R4E, RF, RTF, SN, SPD, SP, STC, TH, THR, TIK, TL, ULCX, UTP, YOINK, YUS
         # Remove the trackers from the default_trackers list that are not used, to save being asked everytime
-        "default_trackers": "ACM, AITHER, AL, ANT, BHD, BHDTV, BLU, CBR, DP, EHD, FNP, HDB, HDT, HHD, HP, HUNO, IHD, LCD, LST, LT, LUME, MTV, MS, NBL, OE, OTW, PSS, PTER, PTP, PTT, R4E, RF, RTF, SN, SPD, SP, STC, TH, THR, TIK, TL, ULCX, UTP, YOINK, YUS",
-        "ACM": {
-            "api_key": "ACM api key",
-            "announce_url": "https://asiancinema.me/announce/customannounceurl",
-            # "anon" : False,
-            # FOR INTERNAL USE ONLY:
-            # "internal" : True,
-            # "internal_groups" : ["What", "Internal", "Groups", "Are", "You", "In"],
-        },
+        "default_trackers": "AITHER, ANT, BHD, BHDTV, BLU, CBR, DP, HDB, HDT, HHD, HUNO, IHD, LCD, LST, LT, LUME, MS, NBL, OE, OTW, PSS, PTER, PTP, PTT, R4E, RF, RTF, SN, SPD, SP, STC, TH, THR, TIK, TL, ULCX, UTP, YOINK, YUS",
         "AITHER": {
             "useAPI": False,  # Set to True if using Aither for automatic ID searching
             "api_key": "AITHER api key",
             "announce_url": "https://aither.cc/announce/customannounceurl",
             # "anon" : False,
             # "modq" : False  ## Not working yet
-        },
-        "AL": {
-            "api_key": "AL api key",
-            "announce_url": "https://animelovers.club/announce/customannounceurl",
-            # "anon" : False
         },
         "ANT": {
             "api_key": "ANT api key",
@@ -133,21 +120,11 @@ config = {
             "announce_url": "https://darkpeers.org/announce/customannounceurl",
             # "anon" : False
         },
-        "EHD": {
-            "api_key": "EchelonHD api key",
-            "announce_url": "https://echelonhd.me/announce/customannounceurl",
-            # "anon" : False
-        },
         "FL": {
             "username": "FL username",
             "passkey": "FL passkey",
             "uploader_name": "https://filelist.io/Custom_Announce_URL",
             # "anon": False,
-        },
-        "FNP": {
-            "api_key": "FNP api key",
-            "announce_url": "https://fearnopeer.com/announce/customannounceurl",
-            # "anon" : "False"
         },
         "HDB": {
             "useAPI": False,  # Set to True if using HDB for automatic ID searching
@@ -169,11 +146,6 @@ config = {
             "announce_url": "https://homiehelpdesk.net/announce/customannounceurl",
             # "anon" : False
         },
-        "HP": {
-            "api_key": "HP",
-            "announce_url": "https://hidden-palace.net/announce/customannounceurl",
-            # "anon" : False
-        },
         "HUNO": {
             "api_key": "HUNO api key",
             "announce_url": "https://hawke.uno/announce/customannounceurl",
@@ -182,11 +154,6 @@ config = {
         "IHD": {
             "api_key": "IHD api key",
             "announce_url": "https://infinityhd.net/announce/customannounceurl",
-            # "anon" : False
-        },
-        "JPTV": {
-            "api_key": "JPTV api key",
-            "announce_url": "https://jptv.club/announce/customannounceurl",
             # "anon" : False
         },
         "LCD": {
@@ -217,14 +184,6 @@ config = {
             "announce_url": "https://midnightscene.cc/announce/customannounceurl",
             # "anon" : False
         },
-        "MTV": {
-            "api_key": "get from security page",
-            "username": "<USERNAME>",
-            "password": "<PASSWORD>",
-            "announce_url": "get from https://www.morethantv.me/upload.php",
-            # 'anon': False,
-            # 'otp_uri' : 'OTP URI, read the following for more information https://github.com/google/google-authenticator/wiki/Key-Uri-Format'
-        },
         "NBL": {
             "api_key": "NBL api key",
             "announce_url": "https://nebulance.io/customannounceurl",
@@ -238,11 +197,6 @@ config = {
         "OTW": {
             "api_key": "OTW api key",
             "announce_url": "https://oldtoons.world/announce/customannounceurl",
-            # "anon" : False
-        },
-        "PSS": {
-            "api_key": "PSS api key",
-            "announce_url": "https://privatesilverscreen.cc/announce/customannounceurl",
             # "anon" : False
         },
         "PTER": {  # Does not appear to be working at all
