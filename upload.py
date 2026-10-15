@@ -11,10 +11,8 @@ from src.trackers.BHD import BHD
 from src.trackers.AITHER import AITHER
 from src.trackers.R4E import R4E
 from src.trackers.THR import THR
-from src.trackers.HP import HP
 from src.trackers.PTP import PTP
 from src.trackers.SN import SN
-from src.trackers.ACM import ACM
 from src.trackers.HDB import HDB
 from src.trackers.LCD import LCD
 from src.trackers.TTG import TTG
@@ -24,8 +22,6 @@ from src.trackers.LT import LT
 from src.trackers.NBL import NBL
 from src.trackers.ANT import ANT
 from src.trackers.PTER import PTER
-from src.trackers.MTV import MTV
-from src.trackers.JPTV import JPTV
 from src.trackers.TL import TL
 from src.trackers.HDT import HDT
 from src.trackers.RF import RF
@@ -33,14 +29,11 @@ from src.trackers.OE import OE
 from src.trackers.BHDTV import BHDTV
 from src.trackers.RTF import RTF
 from src.trackers.OTW import OTW
-from src.trackers.FNP import FNP
 from src.trackers.CBR import CBR
 from src.trackers.UTP import UTP
-from src.trackers.AL import AL
 from src.trackers.SHRI import SHRI
 from src.trackers.TIK import TIK
 from src.trackers.TVC import TVC
-from src.trackers.PSS import PSS
 from src.trackers.ULCX import ULCX
 from src.trackers.SPD import SPD
 from src.trackers.YOINK import YOINK
@@ -57,7 +50,6 @@ from src.trackers.PG import PG
 from src.trackers.ZNTH import ZNTH
 from src.trackers.RMC import RMC
 from src.trackers.TH import TH
-from src.trackers.EHD import EHD
 import json
 from pathlib import Path
 import asyncio
@@ -625,22 +617,22 @@ async def do_the_thing(base_dir):
         ####################################
         common = COMMON(config=config)
         api_trackers = [
-            'ACM', 'AITHER', 'AL', 'BHD', 'BLU', 'CBR', 'FNP', 'HUNO', 'JPTV', 'LCD', 'LST', 'LT',
-            'OE', 'OTW', 'PSS', 'RF', 'R4E', 'SHRI', 'TIK', 'ULCX', 'UTP', 'YOINK', 'PTT', 'YUS', 'SP', 'LUME', 'STC', 'HHD', 'DP', 'MS', 'IHD', 'PG', 'ZNTH', 'RMC', 'TH', 'EHD'
+            'AITHER', 'BHD', 'BLU', 'CBR', 'HUNO', 'LCD', 'LST', 'LT',
+            'OE', 'OTW', 'RF', 'R4E', 'SHRI', 'TIK', 'ULCX', 'UTP', 'YOINK', 'PTT', 'YUS', 'SP', 'LUME', 'STC', 'HHD', 'DP', 'MS', 'IHD', 'PG', 'ZNTH', 'RMC', 'TH'
         ]
         other_api_trackers = [
             'ANT', 'BHDTV', 'NBL', 'RTF', 'SN', 'SPD', 'TL', 'TVC'
         ]
         http_trackers = [
-            'FL', 'HDB', 'HDT', 'MTV', 'PTER', 'TTG'
+            'FL', 'HDB', 'HDT', 'PTER', 'TTG'
         ]
         tracker_class_map = {
-            'ACM': ACM, 'AITHER': AITHER, 'AL': AL, 'ANT': ANT, 'BHD': BHD, 'BHDTV': BHDTV, 'BLU': BLU, 'CBR': CBR,
-            'FNP': FNP, 'FL': FL, 'HDB': HDB, 'HDT': HDT, 'HP': HP, 'HUNO': HUNO, 'JPTV': JPTV, 'LCD': LCD,
-            'LST': LST, 'LT': LT, 'MTV': MTV, 'NBL': NBL, 'OE': OE, 'OTW': OTW, 'PSS': PSS, 'PTP': PTP, 'PTER': PTER,
+            'AITHER': AITHER, 'ANT': ANT, 'BHD': BHD, 'BHDTV': BHDTV, 'BLU': BLU, 'CBR': CBR,
+            'FL': FL, 'HDB': HDB, 'HDT': HDT, 'HUNO': HUNO, 'LCD': LCD,
+            'LST': LST, 'LT': LT, 'NBL': NBL, 'OE': OE, 'OTW': OTW, 'PTP': PTP, 'PTER': PTER,
             'R4E': R4E, 'RF': RF, 'RTF': RTF, 'SHRI': SHRI, 'SN': SN, 'SPD': SPD, 'THR': THR,
             'TIK': TIK, 'TL': TL, 'TVC': TVC, 'TTG': TTG, 'ULCX': ULCX, 'UTP': UTP, 'YOINK': YOINK, 'YUS': YUS, 'SP': SP, 'PTT': PTT, 'LUME': LUME, 'STC': STC,
-            'HHD': HHD, 'DP': DP, 'MS': MS, 'IHD': IHD, 'PG': PG, 'ZNTH': ZNTH, 'RMC': RMC, 'TH': TH, 'EHD': EHD,
+            'HHD': HHD, 'DP': DP, 'MS': MS, 'IHD': IHD, 'PG': PG, 'ZNTH': ZNTH, 'RMC': RMC, 'TH': TH,
         }
 
         tracker_capabilities = {
