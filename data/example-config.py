@@ -75,9 +75,9 @@ config = {
     },
     "TRACKERS": {
         # Which trackers do you want to upload to?
-        # Available tracker: AITHER, ANT, BHD, BHDTV, BLU, CBR, DP, HDB, HDT, HHD, HUNO, IHD, LCD, LST, LT, LUME, MS, NBL, OE, OTW, PSS, PTER, PTP, PTT, R4E, RF, RTF, SN, SPD, SP, STC, TH, THR, TIK, TL, ULCX, UTP, YOINK, YUS
+        # Available tracker: AITHER, ANT, BHD, BHDTV, BLU, CBR, DP, HDB, HDT, HHD, HUNO, IHD, LCD, LST, LT, LUME, MS, NBL, OE, OTW, PG, PTER, PTP, PTT, R4E, RF, RTF, SN, SPD, SP, STC, TH, THR, TIK, TL, ULCX, UTP, YOINK, YUS, ZNTH
         # Remove the trackers from the default_trackers list that are not used, to save being asked everytime
-        "default_trackers": "AITHER, ANT, BHD, BHDTV, BLU, CBR, DP, HDB, HDT, HHD, HUNO, IHD, LCD, LST, LT, LUME, MS, NBL, OE, OTW, PSS, PTER, PTP, PTT, R4E, RF, RTF, SN, SPD, SP, STC, TH, THR, TIK, TL, ULCX, UTP, YOINK, YUS",
+        "default_trackers": "AITHER, ANT, BHD, BHDTV, BLU, CBR, DP, HDB, HDT, HHD, HUNO, IHD, LCD, LST, LT, LUME, MS, NBL, OE, OTW, PG, PTER, PTP, PTT, R4E, RF, RTF, SN, SPD, SP, STC, TH, THR, TIK, TL, ULCX, UTP, YOINK, YUS, ZNTH",
         "AITHER": {
             "useAPI": False,  # Set to True if using Aither for automatic ID searching
             "api_key": "AITHER api key",
@@ -197,6 +197,11 @@ config = {
         "OTW": {
             "api_key": "OTW api key",
             "announce_url": "https://oldtoons.world/announce/customannounceurl",
+            # "anon" : False
+        },
+        "PG": {
+            "api_key": "PG api key",
+            "announce_url": "https://peergarden.org/announce/customannounceurl",
             # "anon" : False
         },
         "PTER": {  # Does not appear to be working at all
@@ -325,6 +330,11 @@ config = {
             "api_key": "yu-scene api key",
             "announce_url": "https://yu-scene.net/announce/customannounceurl",
             # "anon" : "False"
+        },
+        "ZNTH": {
+            "api_key": "ZNTH api key",
+            "announce_url": "https://znth.cx/announce/customannounceurl",
+            # "anon" : False
         },
     },
     # enable_search to True will automatically try and find a suitable hash to save having to rehash when creating torrents
