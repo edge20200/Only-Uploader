@@ -1025,15 +1025,59 @@ def get_confirmation(meta):
 
 
 # NEW EXACT MATCH FUNCTIONS ADDED HERE
+# Tokens tracker-side renaming adds (e.g. HUNO's "SDR", "English") that don't
+# change whether a dupe is actually the same release
+EXACT_MATCH_IGNORED_TOKENS = {"english", "sdr"}
+
+# Codec spellings that tracker renaming reformats (e.g. "DD+" -> "DDP")
+EXACT_MATCH_TOKEN_ALIASES = {
+    "avc": "h264",
+    "x264": "h264",
+    "ac3": "dd",
+    "eac3": "ddp",
+    "hevc": "h265",
+    "x265": "h265",
+}
+
+
+def exact_match_tokens(name):
+    """
+    Normalize a release name into comparable tokens so that tracker-renamed
+    versions of the same release compare equal.
+    e.g. "Movie 2022 1080p FAND WEB-DL DD+ 2.0 H.264-OnlyWeb" and
+         "Movie (2022) (1080p FAND WEB-DL H264 SDR DDP 2.0 English - OnlyWeb)"
+    normalize to the same token list.
+    """
+    name = name.lower()
+    # Unify spellings that tracker renaming reformats before tokenizing
+    name = re.sub(r'\bdd\s*\+', 'ddp ', name)
+    name = re.sub(r'\bh\s*\.\s*264\b', 'h264', name)
+    name = re.sub(r'\bh\s*\.\s*265\b', 'h265', name)
+    name = re.sub(r'\bdtshd\b', 'dts hd', name)
+    name = re.sub(r'\bwebdl\b', 'web dl', name)
+    name = re.sub(r'\bwebdrip\b', 'web drip', name)
+    tokens = re.findall(r'[a-z0-9]+', name)
+    tokens = [EXACT_MATCH_TOKEN_ALIASES.get(token, token) for token in tokens]
+    tokens = [token for token in tokens if token not in EXACT_MATCH_IGNORED_TOKENS]
+    return sorted(tokens)
+
+
+def is_exact_match_name(name_a, name_b):
+    return exact_match_tokens(name_a) == exact_match_tokens(name_b)
+
+
 def find_exact_match(dupes, meta):
     """
     Find exact matches in the dupes list.
     Returns the exact match string if found, otherwise None.
+    Compares normalized tokens instead of raw strings because some trackers
+    (e.g. HUNO) rename uploads to their own format on upload.
     """
-    target_name = meta['name'].lower()
-
+    target_tokens = exact_match_tokens(meta['name'])
     for dupe in dupes:
-        if dupe.lower() == target_name:
+        if meta.get('debug', False):
+            console.print(f"[blue]Debug: Comparing target tokens {target_tokens} to dupe tokens {exact_match_tokens(dupe)} ({dupe})[/blue]")
+        if exact_match_tokens(dupe) == target_tokens:
             return dupe
     return None
 
@@ -1060,16 +1104,24 @@ async def handle_exact_match(tracker_class, tracker_name, exact_match_name, meta
         # For UNIT3D trackers, we can search for the exact match and get the download URL
         if hasattr(tracker_class, 'search_url'):
             console.print(f"[bold cyan]Searching for torrent ID on {tracker_name}...[/bold cyan]")
+            api_key = tracker_class.config['TRACKERS'][tracker_name]['api_key'].strip()
+            # UNIT3D sites authenticate either via the api_token query param (e.g. BHD, OE)
+            # or via a Bearer header (e.g. HHD), so send both
             params = {
-                'api_token': tracker_class.config['TRACKERS'][tracker_name]['api_key'].strip(),
+                'api_token': api_key,
                 'name': exact_match_name  # Search without quotes for better matching
+            }
+            if meta.get('tmdb'):
+                params['tmdbId'] = meta['tmdb']
+            headers = {
+                'Authorization': f'Bearer {api_key}'
             }
 
             if meta.get('debug', False):
                 console.print(f"[blue]Debug: Searching with params: name={exact_match_name}[/blue]")
 
             try:
-                response = requests.get(url=tracker_class.search_url, params=params, timeout=30)
+                response = requests.get(url=tracker_class.search_url, params=params, headers=headers, timeout=30)
                 response.raise_for_status()
                 response_data = response.json()
 
@@ -1096,7 +1148,7 @@ async def handle_exact_match(tracker_class, tracker_name, exact_match_name, meta
                         if meta.get('debug', False):
                             console.print(f"[blue]Debug: Result keys: {result.keys()}[/blue]")
 
-                        if result_name.lower() == exact_match_name.lower():
+                        if is_exact_match_name(result_name, exact_match_name):
                             exact_match_result = result
                             if meta.get('debug', False):
                                 console.print(f"[green]Debug: Found exact match result![/green]")
@@ -1161,7 +1213,7 @@ async def handle_exact_match(tracker_class, tracker_name, exact_match_name, meta
 
                             async with aiohttp.ClientSession() as session:
                                 try:
-                                    async with session.get(download_url, params=params, timeout=30) as r:
+                                    async with session.get(download_url, params=params, headers=headers, timeout=30) as r:
                                         if meta.get('debug', False):
                                             console.print(f"[blue]Debug: Response status: {r.status}[/blue]")
                                         if r.status == 200:
@@ -1217,6 +1269,9 @@ async def handle_exact_match(tracker_class, tracker_name, exact_match_name, meta
                 return False
             except requests.Timeout:
                 console.print(f"[bold red]Timeout during search API call[/bold red]")
+                return False
+            except json.JSONDecodeError:
+                console.print(f"[bold red]{tracker_name} API returned a non-JSON response - check the API key/auth method for this tracker.[/bold red]")
                 return False
             except requests.RequestException as e:
                 console.print(f"[bold red]Network error during search: {str(e)}[/bold red]")
