@@ -75,9 +75,9 @@ config = {
     },
     "TRACKERS": {
         # Which trackers do you want to upload to?
-        # Available tracker: AITHER, ANT, BHD, BHDTV, BLU, CBR, DP, HDB, HDT, HHD, HUNO, IHD, LCD, LST, LT, LUME, MS, NBL, OE, OTW, PG, PTER, PTP, PTT, R4E, RF, RTF, SN, SPD, SP, STC, TH, THR, TIK, TL, ULCX, UTP, YOINK, YUS, ZNTH
+        # Available tracker: AITHER, ANT, BHD, BHDTV, BLU, CBR, DP, HDB, HDT, HHD, HUNO, IHD, LCD, LST, LT, LUME, MS, NB, NBL, OE, OTW, PG, PTER, PTP, PTT, R4E, RF, RTF, SN, SPD, SP, STC, TH, THR, TIK, TL, ULCX, UTP, YOINK, YUS, ZNTH
         # Remove the trackers from the default_trackers list that are not used, to save being asked everytime
-        "default_trackers": "AITHER, ANT, BHD, BHDTV, BLU, CBR, DP, HDB, HDT, HHD, HUNO, IHD, LCD, LST, LT, LUME, MS, NBL, OE, OTW, PG, PTER, PTP, PTT, R4E, RF, RTF, SN, SPD, SP, STC, TH, THR, TIK, TL, ULCX, UTP, YOINK, YUS, ZNTH",
+        "default_trackers": "AITHER, ANT, BHD, BHDTV, BLU, CBR, DP, HDB, HDT, HHD, HUNO, IHD, LCD, LST, LT, LUME, MS, NB, NBL, OE, OTW, PG, PTER, PTP, PTT, R4E, RF, RTF, SN, SPD, SP, STC, TH, THR, TIK, TL, ULCX, UTP, YOINK, YUS, ZNTH",
         "AITHER": {
             "useAPI": False,  # Set to True if using Aither for automatic ID searching
             "api_key": "AITHER api key",
@@ -182,6 +182,11 @@ config = {
         "MS": {
             "api_key": "MidnightScene api key",
             "announce_url": "https://midnightscene.cc/announce/customannounceurl",
+            # "anon" : False
+        },
+        "NB": {
+            "api_key": "Nightbloom api key",
+            "announce_url": "https://nightbloom.cx/announce/customannounceurl",
             # "anon" : False
         },
         "NBL": {
